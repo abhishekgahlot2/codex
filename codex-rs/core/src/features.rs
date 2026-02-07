@@ -113,6 +113,9 @@ pub enum Feature {
     EnableRequestCompression,
     /// Enable collab tools.
     Collab,
+    // --- ConsoleAI team: team orchestration feature flag ---
+    /// Enable team orchestration tools (team_create, team_add_task, etc.)
+    TeamOrchestration,
     /// Enable apps.
     Apps,
     /// Allow prompting and installing missing MCP dependencies.
@@ -524,6 +527,17 @@ pub const FEATURES: &[FeatureSpec] = &[
             announcement: "NEW: Sub-agents can now be spawned by Codex. Enable in /experimental and restart Codex!",
         },
         default_enabled: false,
+    },
+    // --- ConsoleAI team: team orchestration feature spec ---
+    FeatureSpec {
+        id: Feature::TeamOrchestration,
+        key: "team_orchestration",
+        stage: Stage::Experimental {
+            name: "Team orchestration",
+            menu_description: "Create and manage teams with shared task boards using natural language.",
+            announcement: "NEW: Team orchestration with shared tasks and messaging is available by default.",
+        },
+        default_enabled: true,
     },
     FeatureSpec {
         id: Feature::Apps,
