@@ -263,6 +263,9 @@
             "steer": {
               "type": "boolean"
             },
+            "team_orchestration": {
+              "type": "boolean"
+            },
             "undo": {
               "type": "boolean"
             },
@@ -1304,6 +1307,9 @@
           "type": "boolean"
         },
         "steer": {
+          "type": "boolean"
+        },
+        "team_orchestration": {
           "type": "boolean"
         },
         "undo": {

@@ -1,0 +1,18 @@
+[package]
+name = "console-security"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+description = "Permission policies, audit logging, performance budgets, and scope controls for Console v2"
+
+[lib]
+doctest = false
+name = "console_security"
+path = "src/lib.rs"
+
+[lints]
+workspace = true
+
+[dependencies]
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }

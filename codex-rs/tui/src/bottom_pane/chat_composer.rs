@@ -97,6 +97,7 @@ use ratatui::layout::Constraint;
 use ratatui::layout::Layout;
 use ratatui::layout::Margin;
 use ratatui::layout::Rect;
+use ratatui::style::Color;
 use ratatui::style::Stylize;
 use ratatui::text::Line;
 use ratatui::text::Span;
@@ -3467,8 +3468,9 @@ impl ChatComposer {
         let style = user_message_style();
         Block::default().style(style).render_ref(composer_rect, buf);
         if !textarea_rect.is_empty() {
+            // --- ConsoleAI team: blue chevron prompt per UX spec ---
             let prompt = if self.input_enabled {
-                "›".bold()
+                "›".bold().fg(Color::Blue)
             } else {
                 "›".dim()
             };

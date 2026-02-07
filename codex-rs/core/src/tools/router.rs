@@ -1,5 +1,6 @@
 use crate::client_common::tools::ToolSpec;
 use crate::codex::Session;
+use crate::features::Feature;
 use crate::codex::TurnContext;
 use crate::function_tool::FunctionCallError;
 use crate::sandboxing::SandboxPermissions;
@@ -146,6 +147,16 @@ impl ToolRouter {
         } = call;
         let payload_outputs_custom = matches!(payload, ToolPayload::Custom { .. });
         let failure_call_id = call_id.clone();
+
+        if session.features().enabled(Feature::TeamOrchestration) && session.is_team_lead_session().await && !tool_name.starts_with("team_") {
+            return Ok(Self::failure_response(
+                failure_call_id,
+                payload_outputs_custom,
+                FunctionCallError::RespondToModel(format!(
+                    "Team lead delegation mode is active. `{tool_name}` is disabled; use team_* tools."
+                )),
+            ));
+        }
 
         let invocation = ToolInvocation {
             session,

@@ -84,6 +84,7 @@ use crate::codex::TurnContext;
 use codex_protocol::protocol::SessionSource;
 use codex_protocol::protocol::SubAgentSource;
 use serde::Deserialize;
+use std::collections::HashSet;
 use std::process::Command;
 use std::sync::Arc;
 
@@ -112,14 +113,22 @@ fn tmux_mode_enabled(args: &TeamCreateArgs) -> bool {
     let arg_mode = args
         .teammate_mode
         .as_deref()
-        .map(|s| s.trim().to_ascii_lowercase());
-    if matches!(arg_mode.as_deref(), Some("tmux")) {
-        return true;
-    }
+        .map(|s| s.trim().to_ascii_lowercase().replace('_', "-"));
+    let env_mode = std::env::var("CONSOLE_TEAMMATE_MODE")
+        .ok()
+        .map(|v| v.trim().to_ascii_lowercase().replace('_', "-"));
+    let resolved = arg_mode
+        .or(env_mode)
+        .unwrap_or_else(|| "auto".to_string());
 
-    std::env::var("CONSOLE_TEAMMATE_MODE")
-        .map(|v| v.trim().eq_ignore_ascii_case("tmux"))
-        .unwrap_or(false)
+    match resolved.as_str() {
+        "tmux" => true,
+        "in-process" => false,
+        // Claude-style default: if already in tmux, use split panes.
+        "auto" => std::env::var("TMUX").is_ok(),
+        // Unknown mode values should not disable teammate panes in tmux sessions.
+        _ => std::env::var("TMUX").is_ok(),
+    }
 }
 
 fn ensure_tmux_env() -> Result<(), FunctionCallError> {
@@ -173,8 +182,22 @@ fn spawn_tmux_panes_for_teammates(teammates: &[SpawnedTeammate]) -> Result<(), F
     });
     let codex_bin_quoted = shell_quote_double(&codex_bin);
 
+    let existing_titles_output = run_tmux(&["list-panes", "-a", "-F", "#{pane_title}"]).unwrap_or_default();
+    let existing_titles: HashSet<String> = existing_titles_output
+        .lines()
+        .map(|line| line.trim().to_string())
+        .collect();
+
+    let teammates_to_spawn: Vec<&SpawnedTeammate> = teammates
+        .iter()
+        .filter(|t| !existing_titles.contains(&format!("@{}", t.name)))
+        .collect();
+    if teammates_to_spawn.is_empty() {
+        return Ok(());
+    }
+
     let mut right_anchor: Option<String> = None;
-    for (idx, teammate) in teammates.iter().enumerate() {
+    for (idx, teammate) in teammates_to_spawn.iter().enumerate() {
         let pane_id = if idx == 0 {
             run_tmux(&["split-window", "-h", "-P", "-F", "#{pane_id}"])?
         } else {
@@ -203,6 +226,35 @@ fn spawn_tmux_panes_for_teammates(teammates: &[SpawnedTeammate]) -> Result<(), F
     Ok(())
 }
 
+fn close_tmux_panes_for_agent_names(agent_names: &[String]) -> Result<usize, FunctionCallError> {
+    if agent_names.is_empty() || std::env::var("TMUX").is_err() {
+        return Ok(0);
+    }
+
+    let target_titles: HashSet<String> = agent_names.iter().map(|n| format!("@{n}")).collect();
+    let panes = match run_tmux(&["list-panes", "-a", "-F", "#{pane_id}\t#{pane_title}"]) {
+        Ok(output) => output,
+        Err(_) => return Ok(0),
+    };
+
+    let mut closed = 0usize;
+    for line in panes.lines() {
+        let mut parts = line.splitn(2, '\t');
+        let pane_id = match parts.next() {
+            Some(id) if !id.trim().is_empty() => id.trim(),
+            _ => continue,
+        };
+        let pane_title = parts.next().unwrap_or_default().trim();
+        if target_titles.contains(pane_title)
+            && run_tmux(&["kill-pane", "-t", pane_id]).is_ok()
+        {
+            closed += 1;
+        }
+    }
+
+    Ok(closed)
+}
+
 async fn handle_team_create(
     session: Arc<Session>,
     turn: Arc<TurnContext>,
@@ -217,6 +269,34 @@ async fn handle_team_create(
     }
 
     let team_state = &session.services.team_state;
+
+    // Reuse existing team when names match, and still ensure teammate panes are visible in tmux.
+    if let Ok(existing_team) = team_state.get_team().await {
+        if existing_team.team == args.team_name {
+            if tmux_mode_enabled(&args) {
+                let existing_teammates: Vec<SpawnedTeammate> = existing_team
+                    .agents
+                    .iter()
+                    .filter(|a| {
+                        a.role == console_team::TeamAgentRole::Teammate
+                            && a.status != console_team::TeamAgentStatus::Shutdown
+                    })
+                    .filter_map(|a| {
+                        a.thread_id.as_ref().map(|thread_id| SpawnedTeammate {
+                            name: a.name.clone(),
+                            thread_id: thread_id.clone(),
+                        })
+                    })
+                    .collect();
+                spawn_tmux_panes_for_teammates(&existing_teammates)?;
+            }
+            return json_output(&existing_team);
+        }
+        return Err(FunctionCallError::RespondToModel(format!(
+            "team '{}' already exists. Clean it up before creating '{}'.",
+            existing_team.team, args.team_name
+        )));
+    }
 
     team_state
         .create_team(&args.team_name, "lead")
@@ -497,10 +577,14 @@ async fn handle_team_shutdown_agent(
         .await
         .map_err(team_err)?;
 
+    let panes_closed =
+        close_tmux_panes_for_agent_names(std::slice::from_ref(&agent.name)).unwrap_or(0);
+
     json_output(&serde_json::json!({
         "agent_id": agent.id,
         "name": agent.name,
-        "status": "shutdown"
+        "status": "shutdown",
+        "panes_closed": panes_closed
     }))
 }
 
@@ -532,11 +616,21 @@ async fn handle_team_cleanup(session: Arc<Session>) -> Result<ToolOutput, Functi
         .assert_cleanup_allowed()
         .await
         .map_err(team_err)?;
+
+    let teammate_names: Vec<String> = team
+        .agents
+        .iter()
+        .filter(|a| a.role == console_team::TeamAgentRole::Teammate)
+        .map(|a| a.name.clone())
+        .collect();
+    let panes_closed = close_tmux_panes_for_agent_names(&teammate_names).unwrap_or(0);
+
     team_state.cleanup().await.map_err(team_err)?;
 
     json_output(&serde_json::json!({
         "team": team.team,
         "status": "cleaned_up",
-        "agents_shutdown": 0
+        "agents_shutdown": 0,
+        "panes_closed": panes_closed
     }))
 }

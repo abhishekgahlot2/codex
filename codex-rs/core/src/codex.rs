@@ -196,6 +196,7 @@ use crate::skills::injection::app_id_from_path;
 use crate::skills::injection::tool_kind_for_path;
 use crate::skills::resolve_skill_dependencies_for_turn;
 use crate::state::ActiveTurn;
+use crate::state::ConsoleRuntimeServices;
 use crate::state::SessionServices;
 use crate::state::SessionState;
 use crate::state_db;
@@ -1066,6 +1067,11 @@ impl Session {
             skills_manager,
             file_watcher,
             agent_control,
+            console: ConsoleRuntimeServices::new(config.codex_home.as_path()),
+            // --- ConsoleAI team: team orchestration state ---
+            team_state: Arc::new(console_team::TeamState::new(
+                config.codex_home.join("teams"),
+            )),
             state_db: state_db_ctx.clone(),
             model_client: ModelClient::new(
                 Some(Arc::clone(&auth_manager)),
@@ -1241,10 +1247,76 @@ impl Session {
     }
 
     pub(crate) async fn get_base_instructions(&self) -> BaseInstructions {
-        let state = self.state.lock().await;
-        BaseInstructions {
-            text: state.session_configuration.base_instructions.clone(),
+        let base_text = {
+            let state = self.state.lock().await;
+            state.session_configuration.base_instructions.clone()
+        };
+
+        let team_lead_overlay = self.team_lead_orchestration_overlay().await;
+
+        // When no team exists yet, include a hint so the model knows how to
+        // create one with actual agents (the most common mistake is calling
+        // team_create without an agents array, which spawns zero teammates).
+        let team_tools_hint = if team_lead_overlay.is_none() {
+            match self.services.team_state.get_team().await {
+                Err(_) => Some(
+                    "TEAM TOOLS: When asked to parallelize work or create a team, use team_create \
+with an 'agents' array to spawn teammates. Example: \
+team_create({\"team_name\": \"project\", \"agents\": [{\"name\": \"worker-1\"}, {\"name\": \"worker-2\"}]}). \
+After creation, use team_add_task and team_message to coordinate. \
+Do NOT create teams unless the user asks for parallel work or a team.",
+                ),
+                Ok(_) => None,
+            }
+        } else {
+            None
+        };
+
+        let text = match (team_lead_overlay, team_tools_hint) {
+            (Some(overlay), _) if base_text.trim().is_empty() => overlay,
+            (Some(overlay), _) => format!("{base_text}\n\n{overlay}"),
+            (_, Some(hint)) if base_text.trim().is_empty() => hint.to_string(),
+            (_, Some(hint)) => format!("{base_text}\n\n{hint}"),
+            (None, None) => base_text,
+        };
+
+        BaseInstructions { text }
+    }
+
+    pub(crate) async fn is_team_lead_session(&self) -> bool {
+        let Ok(team) = self.services.team_state.get_team().await else {
+            return false;
+        };
+        let Some(lead) = team.agents.iter().find(|a| a.id == team.lead_id) else {
+            return false;
+        };
+        lead.thread_id == Some(self.conversation_id)
+    }
+
+    async fn team_lead_orchestration_overlay(&self) -> Option<String> {
+        let team = self.services.team_state.get_team().await.ok()?;
+        let lead = team.agents.iter().find(|a| a.id == team.lead_id)?;
+        if lead.thread_id != Some(self.conversation_id) {
+            return None;
         }
+
+        let has_active_teammates = team.agents.iter().any(|a| {
+            a.role == console_team::TeamAgentRole::Teammate
+                && a.status != console_team::TeamAgentStatus::Shutdown
+        });
+        if !has_active_teammates {
+            return None;
+        }
+
+        Some(
+            "TEAM LEAD ORCHESTRATION MODE: You are the lead for an active teammate team. \
+Delegate execution to teammates and avoid doing substantive worker tasks yourself. \
+Use team_status to discover teammate IDs, then create/assign tasks, send teammate instructions, \
+wait for teammate completion, and synthesize final results for the user. \
+Treat teammate labels/IDs as internal plumbing; do not surface raw worker names or UUIDs in user-facing output unless explicitly requested. \
+Only do direct execution yourself if the user explicitly asks you to bypass teammates."
+                .to_string(),
+        )
     }
 
     async fn record_initial_history(&self, conversation_history: InitialHistory) {
@@ -4123,10 +4195,15 @@ async fn run_sampling_request(
     let model_supports_parallel = turn_context.model_info.supports_parallel_tool_calls;
 
     let base_instructions = sess.get_base_instructions().await;
+    let team_lead_only_team_tools = sess.features().enabled(Feature::TeamOrchestration) && sess.is_team_lead_session().await;
+    let mut prompt_tools = router.specs();
+    if team_lead_only_team_tools {
+        prompt_tools.retain(|tool| tool.name().starts_with("team_"));
+    }
 
     let prompt = Prompt {
         input,
-        tools: router.specs(),
+        tools: prompt_tools,
         parallel_tool_calls: model_supports_parallel,
         base_instructions,
         personality: turn_context.personality,
@@ -5910,6 +5987,11 @@ mod tests {
             skills_manager,
             file_watcher,
             agent_control,
+            console: ConsoleRuntimeServices::new(config.codex_home.as_path()),
+            // --- ConsoleAI team: team orchestration state ---
+            team_state: Arc::new(console_team::TeamState::new(
+                config.codex_home.join("teams"),
+            )),
             state_db: None,
             model_client: ModelClient::new(
                 Some(auth_manager.clone()),
@@ -6042,6 +6124,11 @@ mod tests {
             skills_manager,
             file_watcher,
             agent_control,
+            console: ConsoleRuntimeServices::new(config.codex_home.as_path()),
+            // --- ConsoleAI team: team orchestration state ---
+            team_state: Arc::new(console_team::TeamState::new(
+                config.codex_home.join("teams"),
+            )),
             state_db: None,
             model_client: ModelClient::new(
                 Some(Arc::clone(&auth_manager)),

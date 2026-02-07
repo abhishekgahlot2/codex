@@ -912,6 +912,12 @@ async fn run_interactive_tui(
         }
     }
 
+    // Propagate --teammate-mode to the team handler via environment variable.
+    // SAFETY: called before any threads are spawned; single-threaded at this point.
+    if let Some(ref mode) = interactive.teammate_mode {
+        unsafe { std::env::set_var("CONSOLE_TEAMMATE_MODE", mode) };
+    }
+
     codex_tui::run_main(interactive, codex_linux_sandbox_exe).await
 }
 
@@ -1012,6 +1018,9 @@ fn merge_interactive_cli_flags(interactive: &mut TuiCli, subcommand_cli: TuiCli)
     }
     if !subcommand_cli.add_dir.is_empty() {
         interactive.add_dir.extend(subcommand_cli.add_dir);
+    }
+    if subcommand_cli.teammate_mode.is_some() {
+        interactive.teammate_mode = subcommand_cli.teammate_mode;
     }
     if let Some(prompt) = subcommand_cli.prompt {
         // Normalize CRLF/CR to LF so CLI-provided text can't leak `\r` into TUI state.

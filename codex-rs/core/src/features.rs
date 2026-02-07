@@ -532,11 +532,7 @@ pub const FEATURES: &[FeatureSpec] = &[
     FeatureSpec {
         id: Feature::TeamOrchestration,
         key: "team_orchestration",
-        stage: Stage::Experimental {
-            name: "Team orchestration",
-            menu_description: "Create and manage teams with shared task boards using natural language.",
-            announcement: "NEW: Team orchestration with shared tasks and messaging is available by default.",
-        },
+        stage: Stage::Stable,
         default_enabled: true,
     },
     FeatureSpec {

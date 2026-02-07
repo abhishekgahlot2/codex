@@ -20,6 +20,7 @@ pub use codex_thread::CodexThread;
 pub use codex_thread::ThreadConfigSnapshot;
 mod agent;
 mod codex_delegate;
+// --- ConsoleAI team: team orchestration module (thin bridge to console-team crate) ---
 mod command_safety;
 pub mod config;
 pub mod config_loader;
@@ -42,6 +43,7 @@ pub mod landlock;
 pub mod mcp;
 mod mcp_connection_manager;
 pub mod models_manager;
+mod team;
 pub use mcp_connection_manager::MCP_SANDBOX_STATE_CAPABILITY;
 pub use mcp_connection_manager::MCP_SANDBOX_STATE_METHOD;
 pub use mcp_connection_manager::SandboxState;

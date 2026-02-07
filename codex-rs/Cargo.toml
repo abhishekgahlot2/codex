@@ -51,6 +51,14 @@ members = [
     "codex-api",
     "state",
     "codex-experimental-api-macros",
+    "console-team",
+    "console-tui",
+    "console-provider",
+    "console-runtime",
+    "console-persist",
+    "console-plugin",
+    "console-security",
+    "console-cli",
 ]
 resolver = "2"
 
@@ -97,6 +105,14 @@ codex-ollama = { path = "ollama" }
 codex-otel = { path = "otel" }
 codex-process-hardening = { path = "process-hardening" }
 codex-protocol = { path = "protocol" }
+console-provider = { path = "console-provider" }
+console-runtime = { path = "console-runtime" }
+console-team = { path = "console-team" }
+console-persist = { path = "console-persist" }
+console-plugin = { path = "console-plugin" }
+console-security = { path = "console-security" }
+console-cli = { path = "console-cli" }
+console-tui = { path = "console-tui" }
 codex-responses-api-proxy = { path = "responses-api-proxy" }
 codex-rmcp-client = { path = "rmcp-client" }
 codex-state = { path = "state" }
