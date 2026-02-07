@@ -30,6 +30,7 @@ pub(crate) struct ToolsConfig {
     pub apply_patch_tool_type: Option<ApplyPatchToolType>,
     pub web_search_mode: Option<WebSearchMode>,
     pub collab_tools: bool,
+    pub team_tools: bool,
     pub collaboration_modes_tools: bool,
     pub memory_tools: bool,
     pub request_rule_enabled: bool,
@@ -51,6 +52,7 @@ impl ToolsConfig {
         } = params;
         let include_apply_patch_tool = features.enabled(Feature::ApplyPatchFreeform);
         let include_collab_tools = features.enabled(Feature::Collab);
+        let include_team_tools = features.enabled(Feature::TeamOrchestration);
         let include_collaboration_modes_tools = features.enabled(Feature::CollaborationModes);
         let include_memory_tools = features.enabled(Feature::MemoryTool);
         let request_rule_enabled = features.enabled(Feature::RequestRule);
@@ -84,7 +86,8 @@ impl ToolsConfig {
             shell_type,
             apply_patch_tool_type,
             web_search_mode: *web_search_mode,
-            collab_tools: include_collab_tools,
+            collab_tools: include_collab_tools || include_team_tools,
+            team_tools: include_team_tools,
             collaboration_modes_tools: include_collaboration_modes_tools,
             memory_tools: include_memory_tools,
             request_rule_enabled,
@@ -703,6 +706,238 @@ fn create_close_agent_tool() -> ToolSpec {
         },
     })
 }
+
+// --- ConsoleAI team: team orchestration tool specs ---
+
+fn create_team_create_tool() -> ToolSpec {
+    let agent_spec_properties = BTreeMap::from([
+        (
+            "name".to_string(),
+            JsonSchema::String {
+                description: Some("Name for this team agent.".to_string()),
+            },
+        ),
+        (
+            "model".to_string(),
+            JsonSchema::String {
+                description: Some("Optional model override for this agent.".to_string()),
+            },
+        ),
+    ]);
+
+    let mut properties = BTreeMap::new();
+    properties.insert(
+        "team_name".to_string(),
+        JsonSchema::String {
+            description: Some("Name for the new team.".to_string()),
+        },
+    );
+    properties.insert(
+        "agents".to_string(),
+        JsonSchema::Array {
+            items: Box::new(JsonSchema::Object {
+                properties: agent_spec_properties,
+                required: Some(vec!["name".to_string()]),
+                additional_properties: Some(false.into()),
+            }),
+            description: Some("Agents to spawn as part of the team.".to_string()),
+        },
+    );
+    properties.insert(
+        "teammate_mode".to_string(),
+        JsonSchema::String {
+            description: Some(
+                "Optional teammate display mode: 'in-process' (default) or 'tmux'.".to_string(),
+            ),
+        },
+    );
+
+    ToolSpec::Function(ResponsesApiTool {
+        name: "team_create".to_string(),
+        description:
+            "Create a new team with optional agents. Returns the team state including all agents."
+                .to_string(),
+        strict: false,
+        parameters: JsonSchema::Object {
+            properties,
+            required: Some(vec!["team_name".to_string()]),
+            additional_properties: Some(false.into()),
+        },
+    })
+}
+
+fn create_team_add_task_tool() -> ToolSpec {
+    let mut properties = BTreeMap::new();
+    properties.insert(
+        "title".to_string(),
+        JsonSchema::String {
+            description: Some("Task title/description.".to_string()),
+        },
+    );
+    properties.insert(
+        "depends_on".to_string(),
+        JsonSchema::Array {
+            items: Box::new(JsonSchema::String { description: None }),
+            description: Some("Task IDs this task depends on (optional).".to_string()),
+        },
+    );
+
+    ToolSpec::Function(ResponsesApiTool {
+        name: "team_add_task".to_string(),
+        description: "Add a task to the team task board. Returns the created task.".to_string(),
+        strict: false,
+        parameters: JsonSchema::Object {
+            properties,
+            required: Some(vec!["title".to_string()]),
+            additional_properties: Some(false.into()),
+        },
+    })
+}
+
+fn create_team_claim_task_tool() -> ToolSpec {
+    let mut properties = BTreeMap::new();
+    properties.insert(
+        "task_id".to_string(),
+        JsonSchema::String {
+            description: Some("ID of the task to claim.".to_string()),
+        },
+    );
+    properties.insert(
+        "assignee_id".to_string(),
+        JsonSchema::String {
+            description: Some("Agent ID claiming the task.".to_string()),
+        },
+    );
+
+    ToolSpec::Function(ResponsesApiTool {
+        name: "team_claim_task".to_string(),
+        description: "Assign a pending task to an agent. Fails if dependencies are not met."
+            .to_string(),
+        strict: false,
+        parameters: JsonSchema::Object {
+            properties,
+            required: Some(vec!["task_id".to_string(), "assignee_id".to_string()]),
+            additional_properties: Some(false.into()),
+        },
+    })
+}
+
+fn create_team_complete_task_tool() -> ToolSpec {
+    let mut properties = BTreeMap::new();
+    properties.insert(
+        "task_id".to_string(),
+        JsonSchema::String {
+            description: Some("ID of the task to mark completed.".to_string()),
+        },
+    );
+
+    ToolSpec::Function(ResponsesApiTool {
+        name: "team_complete_task".to_string(),
+        description: "Mark a task as completed. Automatically unblocks dependent tasks."
+            .to_string(),
+        strict: false,
+        parameters: JsonSchema::Object {
+            properties,
+            required: Some(vec!["task_id".to_string()]),
+            additional_properties: Some(false.into()),
+        },
+    })
+}
+
+fn create_team_list_tasks_tool() -> ToolSpec {
+    ToolSpec::Function(ResponsesApiTool {
+        name: "team_list_tasks".to_string(),
+        description: "List all tasks on the team task board with their status.".to_string(),
+        strict: false,
+        parameters: JsonSchema::Object {
+            properties: BTreeMap::new(),
+            required: None,
+            additional_properties: Some(false.into()),
+        },
+    })
+}
+
+fn create_team_message_tool() -> ToolSpec {
+    let mut properties = BTreeMap::new();
+    properties.insert(
+        "from".to_string(),
+        JsonSchema::String {
+            description: Some("Optional sender name/ID (defaults to team lead).".to_string()),
+        },
+    );
+    properties.insert(
+        "to".to_string(),
+        JsonSchema::String {
+            description: Some("Name or ID of the agent to message.".to_string()),
+        },
+    );
+    properties.insert(
+        "body".to_string(),
+        JsonSchema::String {
+            description: Some("Message content.".to_string()),
+        },
+    );
+
+    ToolSpec::Function(ResponsesApiTool {
+        name: "team_message".to_string(),
+        description: "Send a message to a team agent. Delivers via the agent's thread.".to_string(),
+        strict: false,
+        parameters: JsonSchema::Object {
+            properties,
+            required: Some(vec!["to".to_string(), "body".to_string()]),
+            additional_properties: Some(false.into()),
+        },
+    })
+}
+
+fn create_team_status_tool() -> ToolSpec {
+    ToolSpec::Function(ResponsesApiTool {
+        name: "team_status".to_string(),
+        description: "Get full team state including agents, tasks, and messages.".to_string(),
+        strict: false,
+        parameters: JsonSchema::Object {
+            properties: BTreeMap::new(),
+            required: None,
+            additional_properties: Some(false.into()),
+        },
+    })
+}
+
+fn create_team_shutdown_agent_tool() -> ToolSpec {
+    let mut properties = BTreeMap::new();
+    properties.insert(
+        "agent_id".to_string(),
+        JsonSchema::String {
+            description: Some("Name or ID of the agent to shut down.".to_string()),
+        },
+    );
+
+    ToolSpec::Function(ResponsesApiTool {
+        name: "team_shutdown_agent".to_string(),
+        description: "Gracefully shut down a team agent.".to_string(),
+        strict: false,
+        parameters: JsonSchema::Object {
+            properties,
+            required: Some(vec!["agent_id".to_string()]),
+            additional_properties: Some(false.into()),
+        },
+    })
+}
+
+fn create_team_cleanup_tool() -> ToolSpec {
+    ToolSpec::Function(ResponsesApiTool {
+        name: "team_cleanup".to_string(),
+        description: "Shut down all team agents and clean up team state.".to_string(),
+        strict: false,
+        parameters: JsonSchema::Object {
+            properties: BTreeMap::new(),
+            required: None,
+            additional_properties: Some(false.into()),
+        },
+    })
+}
+
+// --- end ConsoleAI team tool specs ---
 
 fn create_test_sync_tool() -> ToolSpec {
     let barrier_properties = BTreeMap::from([
@@ -1441,6 +1676,29 @@ pub(crate) fn build_specs(
         builder.register_handler("resume_agent", collab_handler.clone());
         builder.register_handler("wait", collab_handler.clone());
         builder.register_handler("close_agent", collab_handler);
+    }
+
+    // --- ConsoleAI team: register team orchestration tools ---
+    if config.team_tools {
+        let team_handler = Arc::new(crate::team::handler::TeamHandler);
+        builder.push_spec(create_team_create_tool());
+        builder.push_spec(create_team_add_task_tool());
+        builder.push_spec(create_team_claim_task_tool());
+        builder.push_spec(create_team_complete_task_tool());
+        builder.push_spec(create_team_list_tasks_tool());
+        builder.push_spec(create_team_message_tool());
+        builder.push_spec(create_team_status_tool());
+        builder.push_spec(create_team_shutdown_agent_tool());
+        builder.push_spec(create_team_cleanup_tool());
+        builder.register_handler("team_create", team_handler.clone());
+        builder.register_handler("team_add_task", team_handler.clone());
+        builder.register_handler("team_claim_task", team_handler.clone());
+        builder.register_handler("team_complete_task", team_handler.clone());
+        builder.register_handler("team_list_tasks", team_handler.clone());
+        builder.register_handler("team_message", team_handler.clone());
+        builder.register_handler("team_status", team_handler.clone());
+        builder.register_handler("team_shutdown_agent", team_handler.clone());
+        builder.register_handler("team_cleanup", team_handler);
     }
 
     if let Some(mcp_tools) = mcp_tools {
