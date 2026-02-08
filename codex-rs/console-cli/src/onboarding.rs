@@ -1,4 +1,5 @@
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum OnboardingStep {
@@ -53,10 +54,7 @@ pub fn default_config() -> OnboardingConfig {
             "dontAsk".to_string(),
             "bypassPermissions".to_string(),
         ],
-        feature_flags: vec![
-            "team_orchestration".to_string(),
-            "plugins".to_string(),
-        ],
+        feature_flags: vec!["team_orchestration".to_string(), "plugins".to_string()],
     }
 }
 
@@ -157,7 +155,11 @@ mod tests {
         let steps = step_order();
         for step in &steps {
             let desc = step_description(step);
-            assert!(!desc.is_empty(), "Description for {:?} should not be empty", step);
+            assert!(
+                !desc.is_empty(),
+                "Description for {:?} should not be empty",
+                step
+            );
         }
     }
 

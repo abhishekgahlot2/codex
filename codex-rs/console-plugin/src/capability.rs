@@ -1,4 +1,5 @@
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 
 /// Capabilities a plugin can declare.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -66,7 +67,10 @@ mod tests {
 
     #[test]
     fn test_negotiate_all_granted() {
-        let requested = vec![PluginCapability::ToolProvider, PluginCapability::HookHandler];
+        let requested = vec![
+            PluginCapability::ToolProvider,
+            PluginCapability::HookHandler,
+        ];
         let allowed = vec![
             PluginCapability::ToolProvider,
             PluginCapability::HookHandler,
@@ -80,7 +84,10 @@ mod tests {
 
     #[test]
     fn test_negotiate_partial() {
-        let requested = vec![PluginCapability::ToolProvider, PluginCapability::UiExtension];
+        let requested = vec![
+            PluginCapability::ToolProvider,
+            PluginCapability::UiExtension,
+        ];
         let allowed = vec![PluginCapability::ToolProvider];
         let grants = negotiate_capabilities(&requested, &allowed);
 

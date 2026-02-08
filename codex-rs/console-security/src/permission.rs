@@ -1,4 +1,5 @@
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 
 /// Permission modes matching Claude Code behavior.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -117,7 +118,10 @@ mod tests {
     #[test]
     fn test_default_mode_returns_ask() {
         let policy = PermissionPolicy::new(PermissionMode::Default);
-        assert_eq!(policy.evaluate("file:write:foo.rs"), PermissionDecision::Ask);
+        assert_eq!(
+            policy.evaluate("file:write:foo.rs"),
+            PermissionDecision::Ask
+        );
     }
 
     #[test]
@@ -141,10 +145,7 @@ mod tests {
     #[test]
     fn test_dont_ask_mode_returns_allow() {
         let policy = PermissionPolicy::new(PermissionMode::DontAsk);
-        assert_eq!(
-            policy.evaluate("tool:exec:ls"),
-            PermissionDecision::Allow
-        );
+        assert_eq!(policy.evaluate("tool:exec:ls"), PermissionDecision::Allow);
     }
 
     #[test]
@@ -254,14 +255,8 @@ mod tests {
             decision: PermissionDecision::Ask,
             reason: Some("confirm exec".into()),
         });
-        assert_eq!(
-            policy.evaluate("tool:exec:rm"),
-            PermissionDecision::Ask
-        );
-        assert_eq!(
-            policy.evaluate("tool:read:file"),
-            PermissionDecision::Allow
-        );
+        assert_eq!(policy.evaluate("tool:exec:rm"), PermissionDecision::Ask);
+        assert_eq!(policy.evaluate("tool:read:file"), PermissionDecision::Allow);
     }
 
     #[test]
@@ -291,9 +286,6 @@ mod tests {
         let policy = PermissionPolicy::default();
         assert_eq!(policy.mode, PermissionMode::Default);
         assert!(policy.rules.is_empty());
-        assert_eq!(
-            policy.evaluate("anything"),
-            PermissionDecision::Ask
-        );
+        assert_eq!(policy.evaluate("anything"), PermissionDecision::Ask);
     }
 }

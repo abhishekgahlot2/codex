@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 
 /// Plugin runtime state.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

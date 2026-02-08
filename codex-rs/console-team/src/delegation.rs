@@ -1,4 +1,5 @@
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 
 /// Controls how a teammate executes assigned work.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -321,7 +322,11 @@ mod tests {
 
     #[test]
     fn test_plan_status_serialization() {
-        let statuses = [PlanStatus::Pending, PlanStatus::Approved, PlanStatus::Rejected];
+        let statuses = [
+            PlanStatus::Pending,
+            PlanStatus::Approved,
+            PlanStatus::Rejected,
+        ];
         for status in &statuses {
             let json = serde_json::to_string(status).unwrap();
             let deserialized: PlanStatus = serde_json::from_str(&json).unwrap();
@@ -329,14 +334,27 @@ mod tests {
         }
 
         // Verify snake_case naming
-        assert_eq!(serde_json::to_string(&PlanStatus::Pending).unwrap(), "\"pending\"");
-        assert_eq!(serde_json::to_string(&PlanStatus::Approved).unwrap(), "\"approved\"");
-        assert_eq!(serde_json::to_string(&PlanStatus::Rejected).unwrap(), "\"rejected\"");
+        assert_eq!(
+            serde_json::to_string(&PlanStatus::Pending).unwrap(),
+            "\"pending\""
+        );
+        assert_eq!(
+            serde_json::to_string(&PlanStatus::Approved).unwrap(),
+            "\"approved\""
+        );
+        assert_eq!(
+            serde_json::to_string(&PlanStatus::Rejected).unwrap(),
+            "\"rejected\""
+        );
     }
 
     #[test]
     fn test_delegate_mode_serialization() {
-        let modes = [DelegateMode::Full, DelegateMode::PlanApproval, DelegateMode::Manual];
+        let modes = [
+            DelegateMode::Full,
+            DelegateMode::PlanApproval,
+            DelegateMode::Manual,
+        ];
         for mode in &modes {
             let json = serde_json::to_string(mode).unwrap();
             let deserialized: DelegateMode = serde_json::from_str(&json).unwrap();
@@ -344,11 +362,17 @@ mod tests {
         }
 
         // Verify snake_case naming
-        assert_eq!(serde_json::to_string(&DelegateMode::Full).unwrap(), "\"full\"");
+        assert_eq!(
+            serde_json::to_string(&DelegateMode::Full).unwrap(),
+            "\"full\""
+        );
         assert_eq!(
             serde_json::to_string(&DelegateMode::PlanApproval).unwrap(),
             "\"plan_approval\""
         );
-        assert_eq!(serde_json::to_string(&DelegateMode::Manual).unwrap(), "\"manual\"");
+        assert_eq!(
+            serde_json::to_string(&DelegateMode::Manual).unwrap(),
+            "\"manual\""
+        );
     }
 }

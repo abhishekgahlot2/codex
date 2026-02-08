@@ -1,4 +1,5 @@
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 
 /// A color value (hex string or named color).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

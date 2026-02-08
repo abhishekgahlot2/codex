@@ -1,5 +1,7 @@
-use serde::{Deserialize, Serialize};
-use std::time::{Duration, Instant};
+use serde::Deserialize;
+use serde::Serialize;
+use std::time::Duration;
+use std::time::Instant;
 
 // ---------------------------------------------------------------------------
 // ToolBudget — Limits on tool calls
@@ -30,10 +32,23 @@ impl Default for ToolBudget {
 /// A guardrail violation that should stop or warn about tool execution.
 #[derive(Debug, Clone)]
 pub enum GuardrailViolation {
-    TurnBudgetExceeded { limit: u32, count: u32 },
-    SessionBudgetExceeded { limit: u32, count: u32 },
-    LoopDetected { tool_name: String, occurrences: usize, window: usize },
-    TurnTimeout { elapsed: Duration, limit: Duration },
+    TurnBudgetExceeded {
+        limit: u32,
+        count: u32,
+    },
+    SessionBudgetExceeded {
+        limit: u32,
+        count: u32,
+    },
+    LoopDetected {
+        tool_name: String,
+        occurrences: usize,
+        window: usize,
+    },
+    TurnTimeout {
+        elapsed: Duration,
+        limit: Duration,
+    },
 }
 
 impl std::fmt::Display for GuardrailViolation {
@@ -151,7 +166,11 @@ impl LoopDetector {
             self.history.remove(0);
         }
         // Count occurrences of this tool in the window
-        let count = self.history.iter().filter(|n| n.as_str() == tool_name).count();
+        let count = self
+            .history
+            .iter()
+            .filter(|n| n.as_str() == tool_name)
+            .count();
         if count >= self.repeat_threshold {
             return Err(GuardrailViolation::LoopDetected {
                 tool_name: tool_name.to_string(),

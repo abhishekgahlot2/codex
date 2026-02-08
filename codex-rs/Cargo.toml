@@ -314,7 +314,7 @@ unwrap_used = "deny"
 # cargo-shear cannot see the platform-specific openssl-sys usage, so we
 # silence the false positive here instead of deleting a real dependency.
 [workspace.metadata.cargo-shear]
-ignored = ["icu_provider", "openssl-sys", "codex-utils-readiness", "codex-secrets"]
+ignored = ["icu_provider", "openssl-sys", "codex-utils-readiness", "codex-secrets", "console-cli"]
 
 [profile.release]
 lto = "fat"

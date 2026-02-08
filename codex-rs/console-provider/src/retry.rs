@@ -6,7 +6,8 @@
 
 use std::time::Duration;
 
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 
 // ---------------------------------------------------------------------------
 // Error classification
@@ -124,7 +125,10 @@ impl RetryPolicy {
 
     /// Whether a given [`ErrorClass`] should be retried.
     pub fn should_retry(class: &ErrorClass) -> bool {
-        matches!(class, ErrorClass::Retryable { .. } | ErrorClass::RateLimit { .. })
+        matches!(
+            class,
+            ErrorClass::Retryable { .. } | ErrorClass::RateLimit { .. }
+        )
     }
 }
 
@@ -227,10 +231,7 @@ mod tests {
 
         // No Retry-After header leaves the default.
         let class = RetryPolicy::classify_with_retry_after(429, None);
-        assert_eq!(
-            class,
-            ErrorClass::RateLimit { retry_after: None }
-        );
+        assert_eq!(class, ErrorClass::RateLimit { retry_after: None });
     }
 
     #[test]
@@ -250,9 +251,18 @@ mod tests {
         // Because of jitter, we check that the *un-jittered* progression
         // (base, base*2, base*4) roughly holds — each delay should be in
         // a reasonable range.
-        assert!(d0.as_millis() >= 750 && d0.as_millis() <= 1_250, "d0={d0:?}");
-        assert!(d1.as_millis() >= 1_500 && d1.as_millis() <= 2_500, "d1={d1:?}");
-        assert!(d2.as_millis() >= 3_000 && d2.as_millis() <= 5_000, "d2={d2:?}");
+        assert!(
+            d0.as_millis() >= 750 && d0.as_millis() <= 1_250,
+            "d0={d0:?}"
+        );
+        assert!(
+            d1.as_millis() >= 1_500 && d1.as_millis() <= 2_500,
+            "d1={d1:?}"
+        );
+        assert!(
+            d2.as_millis() >= 3_000 && d2.as_millis() <= 5_000,
+            "d2={d2:?}"
+        );
     }
 
     #[test]

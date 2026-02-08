@@ -1,6 +1,8 @@
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 
-use crate::capability::{PluginCapability, SandboxLevel};
+use crate::capability::PluginCapability;
+use crate::capability::SandboxLevel;
 
 /// Metadata about a registered plugin.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -74,8 +76,12 @@ mod tests {
     #[test]
     fn test_register_and_lookup() {
         let mut reg = PluginRegistry::new();
-        reg.register(make_plugin("alpha", vec![PluginCapability::ToolProvider], true))
-            .unwrap();
+        reg.register(make_plugin(
+            "alpha",
+            vec![PluginCapability::ToolProvider],
+            true,
+        ))
+        .unwrap();
 
         let p = reg.get("alpha").unwrap();
         assert_eq!(p.name, "alpha");
@@ -93,12 +99,8 @@ mod tests {
     #[test]
     fn test_list_by_capability() {
         let mut reg = PluginRegistry::new();
-        reg.register(make_plugin(
-            "a",
-            vec![PluginCapability::ToolProvider],
-            true,
-        ))
-        .unwrap();
+        reg.register(make_plugin("a", vec![PluginCapability::ToolProvider], true))
+            .unwrap();
         reg.register(make_plugin(
             "b",
             vec![PluginCapability::ThemeProvider],
@@ -107,7 +109,10 @@ mod tests {
         .unwrap();
         reg.register(make_plugin(
             "c",
-            vec![PluginCapability::ToolProvider, PluginCapability::UiExtension],
+            vec![
+                PluginCapability::ToolProvider,
+                PluginCapability::UiExtension,
+            ],
             true,
         ))
         .unwrap();

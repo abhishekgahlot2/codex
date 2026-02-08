@@ -1,4 +1,5 @@
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 
 /// A checkpoint captures session state at a point in time.
 #[derive(Debug, Clone, Serialize, Deserialize)]

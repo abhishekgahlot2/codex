@@ -1,4 +1,5 @@
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 
 /// Filesystem access scope.
 #[derive(Debug, Clone, Serialize, Deserialize)]

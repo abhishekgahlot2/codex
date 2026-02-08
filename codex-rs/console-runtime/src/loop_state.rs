@@ -1,4 +1,5 @@
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 
 /// Phases of the tool execution loop: Plan -> Act -> Observe.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

@@ -4195,7 +4195,8 @@ async fn run_sampling_request(
     let model_supports_parallel = turn_context.model_info.supports_parallel_tool_calls;
 
     let base_instructions = sess.get_base_instructions().await;
-    let team_lead_only_team_tools = sess.features().enabled(Feature::TeamOrchestration) && sess.is_team_lead_session().await;
+    let team_lead_only_team_tools =
+        sess.features().enabled(Feature::TeamOrchestration) && sess.is_team_lead_session().await;
     let mut prompt_tools = router.specs();
     if team_lead_only_team_tools {
         prompt_tools.retain(|tool| tool.name().starts_with("team_"));

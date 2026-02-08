@@ -2393,7 +2393,6 @@ name = "console-cli"
 version = "0.1.0"
 dependencies = [
  "serde",
- "serde_json",
 ]
 
 [[package]]
@@ -2421,7 +2420,6 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror 2.0.18",
- "tokio",
 ]
 
 [[package]]
@@ -2430,7 +2428,6 @@ version = "0.0.0"
 dependencies = [
  "serde",
  "serde_json",
- "tokio",
 ]
 
 [[package]]

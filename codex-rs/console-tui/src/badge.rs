@@ -88,17 +88,32 @@ mod tests {
     fn test_badge_contains_name() {
         let badge = agent_badge_ansi("researcher", 0);
         assert!(badge.contains("@researcher"), "badge should contain @name");
-        assert!(badge.contains("\x1b[1;"), "badge should contain ANSI bold prefix");
-        assert!(badge.contains("\x1b[0m"), "badge should contain ANSI reset suffix");
+        assert!(
+            badge.contains("\x1b[1;"),
+            "badge should contain ANSI bold prefix"
+        );
+        assert!(
+            badge.contains("\x1b[0m"),
+            "badge should contain ANSI reset suffix"
+        );
     }
 
     #[test]
     fn test_pane_header_is_valid_shell() {
         let header = pane_header_shell_cmd("coder", 1);
-        assert!(header.contains("printf"), "header should be a printf command");
+        assert!(
+            header.contains("printf"),
+            "header should be a printf command"
+        );
         // Yellow (index 1) -> color code 33
-        assert!(header.contains("33"), "header should contain the color code");
-        assert!(header.contains("@coder"), "header should contain the agent name");
+        assert!(
+            header.contains("33"),
+            "header should contain the color code"
+        );
+        assert!(
+            header.contains("@coder"),
+            "header should contain the agent name"
+        );
     }
 
     #[test]

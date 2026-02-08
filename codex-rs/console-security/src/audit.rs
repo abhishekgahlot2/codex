@@ -1,4 +1,5 @@
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 
 /// A single audit log entry.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -27,13 +28,7 @@ impl AuditLog {
         }
     }
 
-    pub fn record(
-        &mut self,
-        action: &str,
-        actor: &str,
-        decision: &str,
-        details: Option<&str>,
-    ) {
+    pub fn record(&mut self, action: &str, actor: &str, decision: &str, details: Option<&str>) {
         let id = format!("audit-{}", self.entries.len() + 1);
         self.entries.push(AuditEntry {
             id,

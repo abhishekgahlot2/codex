@@ -1,4 +1,5 @@
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 
 /// Performance budget limits.
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -1,4 +1,5 @@
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 
 /// Visual status for a task in the checklist display.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -60,10 +61,7 @@ pub fn format_task_checklist(tasks: &[TaskDisplayItem]) -> String {
             }
             TaskDisplayStatus::Blocked => {
                 // Dim (\x1b[2m), assignee before reset
-                format!(
-                    "\x1b[2m  \u{2298} {}{}\x1b[0m",
-                    task.title, assignee_suffix
-                )
+                format!("\x1b[2m  \u{2298} {}{}\x1b[0m", task.title, assignee_suffix)
             }
         };
 
@@ -99,7 +97,11 @@ pub fn format_agent_tree(agents: &[(String, Option<String>)]) -> String {
 
     for (i, (name, task)) in agents.iter().enumerate() {
         let is_last = i == count - 1;
-        let branch = if is_last { "\u{2514}\u{2500}\u{2500}" } else { "\u{251c}\u{2500}\u{2500}" };
+        let branch = if is_last {
+            "\u{2514}\u{2500}\u{2500}"
+        } else {
+            "\u{251c}\u{2500}\u{2500}"
+        };
         let continuation = if is_last { "    " } else { "\u{2502}   " };
 
         // Agent name line
@@ -107,7 +109,10 @@ pub fn format_agent_tree(agents: &[(String, Option<String>)]) -> String {
 
         // Optional task description as child node
         if let Some(desc) = task {
-            lines.push(format!("  {} \u{2514}\u{2500}\u{2500} {}", continuation, desc));
+            lines.push(format!(
+                "  {} \u{2514}\u{2500}\u{2500} {}",
+                continuation, desc
+            ));
         }
     }
 
@@ -149,23 +154,44 @@ mod tests {
         assert_eq!(lines.len(), 4);
 
         // Completed: green + strikethrough + checkmark
-        assert!(lines[0].contains('\u{2713}'), "Completed should have checkmark");
+        assert!(
+            lines[0].contains('\u{2713}'),
+            "Completed should have checkmark"
+        );
         assert!(lines[0].contains("\x1b[32m"), "Completed should be green");
-        assert!(lines[0].contains("\x1b[9m"), "Completed should be strikethrough");
+        assert!(
+            lines[0].contains("\x1b[9m"),
+            "Completed should be strikethrough"
+        );
         assert!(lines[0].contains("Completed task"));
 
         // InProgress: bold yellow + filled square
-        assert!(lines[1].contains('\u{25a0}'), "InProgress should have filled square");
-        assert!(lines[1].contains("\x1b[1;33m"), "InProgress should be bold yellow");
+        assert!(
+            lines[1].contains('\u{25a0}'),
+            "InProgress should have filled square"
+        );
+        assert!(
+            lines[1].contains("\x1b[1;33m"),
+            "InProgress should be bold yellow"
+        );
         assert!(lines[1].contains("In progress task"));
 
         // Pending: plain + empty square
-        assert!(lines[2].contains('\u{25a1}'), "Pending should have empty square");
-        assert!(!lines[2].contains("\x1b["), "Pending should have no ANSI codes");
+        assert!(
+            lines[2].contains('\u{25a1}'),
+            "Pending should have empty square"
+        );
+        assert!(
+            !lines[2].contains("\x1b["),
+            "Pending should have no ANSI codes"
+        );
         assert!(lines[2].contains("Pending task"));
 
         // Blocked: dim + circled slash
-        assert!(lines[3].contains('\u{2298}'), "Blocked should have circled slash");
+        assert!(
+            lines[3].contains('\u{2298}'),
+            "Blocked should have circled slash"
+        );
         assert!(lines[3].contains("\x1b[2m"), "Blocked should be dim");
         assert!(lines[3].contains("Blocked task"));
     }
@@ -201,10 +227,22 @@ mod tests {
         assert_eq!(lines.len(), 4);
 
         // Verify assignee names appear in each line
-        assert!(lines[0].contains("(poet-nature)"), "Completed should show assignee");
-        assert!(lines[1].contains("(poet-tech)"), "InProgress should show assignee");
-        assert!(lines[2].contains("(poet-time)"), "Pending should show assignee");
-        assert!(lines[3].contains("(blocked-agent)"), "Blocked should show assignee");
+        assert!(
+            lines[0].contains("(poet-nature)"),
+            "Completed should show assignee"
+        );
+        assert!(
+            lines[1].contains("(poet-tech)"),
+            "InProgress should show assignee"
+        );
+        assert!(
+            lines[2].contains("(poet-time)"),
+            "Pending should show assignee"
+        );
+        assert!(
+            lines[3].contains("(blocked-agent)"),
+            "Blocked should show assignee"
+        );
 
         // Verify assignee is before the ANSI reset for styled lines
         for (i, line) in lines.iter().enumerate() {
@@ -212,7 +250,9 @@ mod tests {
                 // Pending has no ANSI codes, skip
                 continue;
             }
-            let reset_pos = line.rfind("\x1b[0m").expect("styled line should have reset");
+            let reset_pos = line
+                .rfind("\x1b[0m")
+                .expect("styled line should have reset");
             let assignee_pos = line.find('(').expect("line should have assignee");
             assert!(
                 assignee_pos < reset_pos,
@@ -225,9 +265,18 @@ mod tests {
     #[test]
     fn test_agent_tree_formatting() {
         let agents = vec![
-            ("poet-nature".to_string(), Some("Write haiku about nature".to_string())),
-            ("poet-tech".to_string(), Some("Write haiku about tech".to_string())),
-            ("poet-time".to_string(), Some("Write haiku about time".to_string())),
+            (
+                "poet-nature".to_string(),
+                Some("Write haiku about nature".to_string()),
+            ),
+            (
+                "poet-tech".to_string(),
+                Some("Write haiku about tech".to_string()),
+            ),
+            (
+                "poet-time".to_string(),
+                Some("Write haiku about time".to_string()),
+            ),
         ];
 
         let output = format_agent_tree(&agents);
@@ -240,22 +289,37 @@ mod tests {
         assert_eq!(lines[0], "3 agents launched");
 
         // First agent (not last): uses ├──
-        assert!(lines[1].contains("\u{251c}\u{2500}\u{2500}"), "non-last should use ├──");
+        assert!(
+            lines[1].contains("\u{251c}\u{2500}\u{2500}"),
+            "non-last should use ├──"
+        );
         assert!(lines[1].contains("@poet-nature"));
         assert!(lines[2].contains("Write haiku about nature"));
-        assert!(lines[2].contains("\u{2502}"), "non-last child should have │ continuation");
+        assert!(
+            lines[2].contains("\u{2502}"),
+            "non-last child should have │ continuation"
+        );
 
         // Second agent (not last): uses ├──
-        assert!(lines[3].contains("\u{251c}\u{2500}\u{2500}"), "non-last should use ├──");
+        assert!(
+            lines[3].contains("\u{251c}\u{2500}\u{2500}"),
+            "non-last should use ├──"
+        );
         assert!(lines[3].contains("@poet-tech"));
         assert!(lines[4].contains("Write haiku about tech"));
 
         // Third agent (last): uses └──
-        assert!(lines[5].contains("\u{2514}\u{2500}\u{2500}"), "last should use └──");
+        assert!(
+            lines[5].contains("\u{2514}\u{2500}\u{2500}"),
+            "last should use └──"
+        );
         assert!(lines[5].contains("@poet-time"));
         assert!(lines[6].contains("Write haiku about time"));
         // Last agent's child should NOT have │ continuation
-        assert!(!lines[6].contains('\u{2502}'), "last child should not have │ continuation");
+        assert!(
+            !lines[6].contains('\u{2502}'),
+            "last child should not have │ continuation"
+        );
     }
 
     #[test]

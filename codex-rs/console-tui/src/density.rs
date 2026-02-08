@@ -1,4 +1,5 @@
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 
 /// Conversation display density.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -122,7 +123,10 @@ mod tests {
             assert_eq!(deserialized.message_padding, cfg.message_padding);
             assert_eq!(deserialized.show_separators, cfg.show_separators);
             assert_eq!(deserialized.show_timestamps, cfg.show_timestamps);
-            assert_eq!(deserialized.collapse_tool_results, cfg.collapse_tool_results);
+            assert_eq!(
+                deserialized.collapse_tool_results,
+                cfg.collapse_tool_results
+            );
         }
     }
 

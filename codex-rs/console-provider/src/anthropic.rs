@@ -6,7 +6,8 @@
 //!
 //! **No HTTP, no async, no IO** — only types and translation helpers.
 
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 
 use crate::error::ProviderError;
 
@@ -141,10 +142,7 @@ pub enum AnthropicStreamEvent {
 
     /// Incremental update to the content block at `index`.
     #[serde(rename = "content_block_delta")]
-    ContentBlockDelta {
-        index: usize,
-        delta: AnthropicDelta,
-    },
+    ContentBlockDelta { index: usize, delta: AnthropicDelta },
 
     /// The content block at `index` is complete.
     #[serde(rename = "content_block_stop")]
@@ -238,16 +236,10 @@ pub struct AnthropicApiError {
 /// Classify an [`AnthropicApiError`] into the crate-level [`ProviderError`].
 pub fn classify_anthropic_error(error: &AnthropicApiError) -> ProviderError {
     match error.error_type.as_str() {
-        "overloaded_error" => {
-            ProviderError::ApiError(format!("overloaded: {}", error.message))
-        }
-        "rate_limit_error" => {
-            ProviderError::ApiError(format!("rate limited: {}", error.message))
-        }
+        "overloaded_error" => ProviderError::ApiError(format!("overloaded: {}", error.message)),
+        "rate_limit_error" => ProviderError::ApiError(format!("rate limited: {}", error.message)),
         "invalid_request_error" => ProviderError::InvalidConfig(error.message.clone()),
-        "authentication_error" => {
-            ProviderError::InvalidConfig(format!("auth: {}", error.message))
-        }
+        "authentication_error" => ProviderError::InvalidConfig(format!("auth: {}", error.message)),
         "not_found_error" => ProviderError::UnsupportedProvider(error.message.clone()),
         other => ProviderError::Other(format!("{}: {}", other, error.message)),
     }
@@ -433,8 +425,7 @@ mod tests {
             _ => panic!("expected Text variant"),
         }
 
-        let tool_use_json =
-            r#"{"type":"tool_use","id":"tu_1","name":"grep","input":{"q":"foo"}}"#;
+        let tool_use_json = r#"{"type":"tool_use","id":"tu_1","name":"grep","input":{"q":"foo"}}"#;
         let block: AnthropicContentBlock = serde_json::from_str(tool_use_json).unwrap();
         match &block {
             AnthropicContentBlock::ToolUse { id, name, input } => {
@@ -445,8 +436,7 @@ mod tests {
             _ => panic!("expected ToolUse variant"),
         }
 
-        let tool_result_json =
-            r#"{"type":"tool_result","tool_use_id":"tu_1","content":"result"}"#;
+        let tool_result_json = r#"{"type":"tool_result","tool_use_id":"tu_1","content":"result"}"#;
         let block: AnthropicContentBlock = serde_json::from_str(tool_result_json).unwrap();
         match &block {
             AnthropicContentBlock::ToolResult {
@@ -921,9 +911,7 @@ mod tests {
             AnthropicStreamEvent::ContentBlockStop { index: 2 },
             AnthropicStreamEvent::ContentBlockDelta {
                 index: 0,
-                delta: AnthropicDelta::TextDelta {
-                    text: "hi".into(),
-                },
+                delta: AnthropicDelta::TextDelta { text: "hi".into() },
             },
             AnthropicStreamEvent::MessageDelta {
                 delta: AnthropicMessageDelta {

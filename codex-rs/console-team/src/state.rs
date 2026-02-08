@@ -4,10 +4,15 @@ use chrono::Utc;
 use codex_protocol::ThreadId;
 use tokio::sync::RwLock;
 
-use crate::error::{Result, TeamError};
-use crate::types::{
-    TaskStatus, TeamAgent, TeamAgentRole, TeamAgentStatus, TeamMessage, TeamStateData, TeamTask,
-};
+use crate::error::Result;
+use crate::error::TeamError;
+use crate::types::TaskStatus;
+use crate::types::TeamAgent;
+use crate::types::TeamAgentRole;
+use crate::types::TeamAgentStatus;
+use crate::types::TeamMessage;
+use crate::types::TeamStateData;
+use crate::types::TeamTask;
 
 /// Generate a unique ID with the given prefix, using timestamp + random hex.
 fn generate_id(prefix: &str) -> String {
@@ -133,9 +138,9 @@ impl TeamState {
     pub async fn get_team(&self) -> Result<TeamStateData> {
         self.try_load_from_disk().await;
         let guard = self.data.read().await;
-        guard.clone().ok_or_else(|| {
-            TeamError::InvalidOperation("No team has been created yet".to_string())
-        })
+        guard
+            .clone()
+            .ok_or_else(|| TeamError::InvalidOperation("No team has been created yet".to_string()))
     }
 
     /// Add an agent to the team.
@@ -434,9 +439,7 @@ impl TeamState {
             .agents
             .iter_mut()
             .find(|a| a.id == agent_id || a.name == agent_id)
-            .ok_or_else(|| {
-                TeamError::InvalidOperation(format!("Agent not found: {agent_id}"))
-            })?;
+            .ok_or_else(|| TeamError::InvalidOperation(format!("Agent not found: {agent_id}")))?;
 
         agent.status = status;
         let result = agent.clone();
@@ -458,17 +461,15 @@ impl TeamState {
             .iter()
             .find(|a| a.id == name_or_id || a.name == name_or_id)
             .cloned()
-            .ok_or_else(|| {
-                TeamError::InvalidOperation(format!("Agent not found: {name_or_id}"))
-            })
+            .ok_or_else(|| TeamError::InvalidOperation(format!("Agent not found: {name_or_id}")))
     }
 
     /// Verify team invariants (for debugging/auditing).
     pub async fn validate_invariants(&self) -> Result<()> {
         let state = self.data.read().await;
-        let state = state.as_ref().ok_or(TeamError::InvalidOperation(
-            "no team exists".into(),
-        ))?;
+        let state = state
+            .as_ref()
+            .ok_or(TeamError::InvalidOperation("no team exists".into()))?;
 
         // Invariant 1: Exactly one lead
         let leads: Vec<_> = state
@@ -485,9 +486,7 @@ impl TeamState {
 
         // Invariant 2: Lead ID matches team's lead_id
         if leads[0].id != state.lead_id {
-            return Err(TeamError::InvalidOperation(
-                "lead agent ID mismatch".into(),
-            ));
+            return Err(TeamError::InvalidOperation("lead agent ID mismatch".into()));
         }
 
         // Invariant 3: All task dependencies reference existing tasks
@@ -809,9 +808,10 @@ mod tests {
             .unwrap();
 
         let err = ts.assert_cleanup_allowed().await.unwrap_err();
-        assert!(err
-            .to_string()
-            .contains("Cannot cleanup team while teammates are active"));
+        assert!(
+            err.to_string()
+                .contains("Cannot cleanup team while teammates are active")
+        );
     }
 
     #[tokio::test]
@@ -882,17 +882,11 @@ mod tests {
         assert_eq!(snapshot.agents.len(), 3);
 
         // 4. add_task A (no deps) -> Pending
-        let task_a = ts
-            .add_task("implement feature A", vec![])
-            .await
-            .unwrap();
+        let task_a = ts.add_task("implement feature A", vec![]).await.unwrap();
         assert_eq!(task_a.status, TaskStatus::Pending);
 
         // 5. add_task B (no deps) -> Pending
-        let task_b = ts
-            .add_task("implement feature B", vec![])
-            .await
-            .unwrap();
+        let task_b = ts.add_task("implement feature B", vec![]).await.unwrap();
         assert_eq!(task_b.status, TaskStatus::Pending);
 
         // 6. add_task C (depends on A and B) -> Blocked
@@ -1100,10 +1094,7 @@ mod tests {
         let task = ts.add_task("some task", vec![]).await.unwrap();
 
         // Try to claim with a string that is neither an agent id nor an agent name.
-        let err = ts
-            .claim_task(&task.id, "not-a-member")
-            .await
-            .unwrap_err();
+        let err = ts.claim_task(&task.id, "not-a-member").await.unwrap_err();
         assert!(err.to_string().contains("not a team member"));
 
         // Claiming by agent name should succeed (the lead is named "lead").
@@ -1147,8 +1138,12 @@ mod tests {
         let ts = make_state(tmp.path());
         ts.create_team("bc-team", "lead").await.unwrap();
         let lead_id = ts.get_team().await.unwrap().lead_id;
-        ts.add_agent("w1", TeamAgentRole::Teammate, None, None).await.unwrap();
-        ts.add_agent("w2", TeamAgentRole::Teammate, None, None).await.unwrap();
+        ts.add_agent("w1", TeamAgentRole::Teammate, None, None)
+            .await
+            .unwrap();
+        ts.add_agent("w2", TeamAgentRole::Teammate, None, None)
+            .await
+            .unwrap();
 
         let msgs = ts.broadcast_message(&lead_id, "hello all").await.unwrap();
         assert_eq!(msgs.len(), 2); // w1 and w2
@@ -1162,9 +1157,16 @@ mod tests {
         let ts = make_state(tmp.path());
         ts.create_team("bc2", "lead").await.unwrap();
         let lead_id = ts.get_team().await.unwrap().lead_id;
-        let w1 = ts.add_agent("w1", TeamAgentRole::Teammate, None, None).await.unwrap();
-        ts.add_agent("w2", TeamAgentRole::Teammate, None, None).await.unwrap();
-        ts.update_agent_status(&w1.id, TeamAgentStatus::Shutdown).await.unwrap();
+        let w1 = ts
+            .add_agent("w1", TeamAgentRole::Teammate, None, None)
+            .await
+            .unwrap();
+        ts.add_agent("w2", TeamAgentRole::Teammate, None, None)
+            .await
+            .unwrap();
+        ts.update_agent_status(&w1.id, TeamAgentStatus::Shutdown)
+            .await
+            .unwrap();
 
         let msgs = ts.broadcast_message(&lead_id, "active only").await.unwrap();
         assert_eq!(msgs.len(), 1); // only w2

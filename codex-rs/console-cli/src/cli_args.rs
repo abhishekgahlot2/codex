@@ -1,4 +1,5 @@
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConsoleCliArgs {
@@ -135,7 +136,9 @@ mod tests {
         };
         assert_eq!(
             validate(&args),
-            Err(ArgsValidationError::InvalidProvider("unknown_provider".to_string()))
+            Err(ArgsValidationError::InvalidProvider(
+                "unknown_provider".to_string()
+            ))
         );
     }
 

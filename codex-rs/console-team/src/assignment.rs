@@ -1,4 +1,5 @@
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 
 /// Strategy for assigning tasks to teammates.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

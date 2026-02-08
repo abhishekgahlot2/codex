@@ -7,7 +7,8 @@
 //! Consumers include OpenRouter, Azure OpenAI, and any other provider that
 //! speaks the Chat Completions protocol.
 
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 
 use crate::error::ProviderError;
 
@@ -380,10 +381,7 @@ mod tests {
         }"#;
 
         let chunk: ChatStreamChunk = serde_json::from_str(json).unwrap();
-        assert_eq!(
-            chunk.choices[0].delta.role.as_deref(),
-            Some("assistant")
-        );
+        assert_eq!(chunk.choices[0].delta.role.as_deref(), Some("assistant"));
         assert!(chunk.choices[0].delta.content.is_none());
     }
 
@@ -401,10 +399,7 @@ mod tests {
         }"#;
 
         let chunk: ChatStreamChunk = serde_json::from_str(json).unwrap();
-        assert_eq!(
-            chunk.choices[0].finish_reason.as_deref(),
-            Some("stop")
-        );
+        assert_eq!(chunk.choices[0].finish_reason.as_deref(), Some("stop"));
     }
 
     #[test]
@@ -521,10 +516,7 @@ mod tests {
         assert_eq!(args, r#"{"location":"NYC"}"#);
 
         // Chunk 4: done
-        assert_eq!(
-            c4.choices[0].finish_reason.as_deref(),
-            Some("tool_calls")
-        );
+        assert_eq!(c4.choices[0].finish_reason.as_deref(), Some("tool_calls"));
     }
 
     // -- Usage deserialization -----------------------------------------------

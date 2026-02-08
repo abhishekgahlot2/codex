@@ -1,4 +1,5 @@
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 
 /// A persisted conversation message.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -108,8 +109,7 @@ impl JsonFileStore {
 
 impl SessionStore for JsonFileStore {
     fn save(&self, session: &DurableSession) -> Result<(), SessionError> {
-        std::fs::create_dir_all(&self.base_dir)
-            .map_err(|e| SessionError::Io(e.to_string()))?;
+        std::fs::create_dir_all(&self.base_dir).map_err(|e| SessionError::Io(e.to_string()))?;
         let json = serde_json::to_string_pretty(session)
             .map_err(|e| SessionError::Serialization(e.to_string()))?;
         std::fs::write(self.session_path(&session.session_id), json)
@@ -118,8 +118,7 @@ impl SessionStore for JsonFileStore {
 
     fn load(&self, session_id: &str) -> Result<DurableSession, SessionError> {
         let path = self.session_path(session_id);
-        let data =
-            std::fs::read_to_string(&path).map_err(|e| SessionError::Io(e.to_string()))?;
+        let data = std::fs::read_to_string(&path).map_err(|e| SessionError::Io(e.to_string()))?;
         serde_json::from_str(&data).map_err(|e| SessionError::Serialization(e.to_string()))
     }
 

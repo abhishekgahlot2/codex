@@ -17,7 +17,9 @@ use crate::tools::handlers::parse_arguments;
 use crate::tools::registry::ToolHandler;
 use crate::tools::registry::ToolKind;
 use async_trait::async_trait;
-use console_tui::{agent_env_vars, format_agent_tree, pane_header_shell_cmd};
+use console_tui::agent_env_vars;
+use console_tui::format_agent_tree;
+use console_tui::pane_header_shell_cmd;
 
 pub struct TeamHandler;
 
@@ -121,9 +123,7 @@ fn tmux_mode_enabled(args: &TeamCreateArgs) -> bool {
     let env_mode = std::env::var("CONSOLE_TEAMMATE_MODE")
         .ok()
         .map(|v| v.trim().to_ascii_lowercase().replace('_', "-"));
-    let resolved = arg_mode
-        .or(env_mode)
-        .unwrap_or_else(|| "auto".to_string());
+    let resolved = arg_mode.or(env_mode).unwrap_or_else(|| "auto".to_string());
 
     match resolved.as_str() {
         "tmux" => true,
@@ -183,10 +183,7 @@ fn codex_bin_path() -> String {
 /// Spawn tmux panes where each pane runs a real codex process (the actual
 /// agent), not a viewer. The teammate prompt is passed via `--prompt` so the
 /// codex instance starts working immediately.
-fn spawn_tmux_agent_panes(
-    team_name: &str,
-    agents: &[AgentSpec],
-) -> Result<(), FunctionCallError> {
+fn spawn_tmux_agent_panes(team_name: &str, agents: &[AgentSpec]) -> Result<(), FunctionCallError> {
     if agents.is_empty() {
         return Ok(());
     }
@@ -256,9 +253,7 @@ Start by checking for available tasks.",
 
         // The codex CLI takes the prompt as a positional argument, not --prompt.
         // Also pass --full-auto so the teammate doesn't block on confirmations.
-        let shell_cmd = format!(
-            "{env_prefix} {codex_bin_quoted} --full-auto {escaped_prompt}",
-        );
+        let shell_cmd = format!("{env_prefix} {codex_bin_quoted} --full-auto {escaped_prompt}",);
         let _ = run_tmux(&["send-keys", "-t", &pane_id, &shell_cmd, "C-m"]);
     }
 
@@ -287,9 +282,7 @@ fn find_pane_by_title(title: &str) -> Option<String> {
 fn send_message_to_pane(agent_name: &str, message: &str) -> Result<(), FunctionCallError> {
     let title = format!("@{agent_name}");
     let pane_id = find_pane_by_title(&title).ok_or_else(|| {
-        FunctionCallError::RespondToModel(format!(
-            "no tmux pane found for teammate '{agent_name}'"
-        ))
+        FunctionCallError::RespondToModel(format!("no tmux pane found for teammate '{agent_name}'"))
     })?;
     // Type the message into the pane's codex prompt and press Enter.
     let escaped = message.replace('\'', "'\\''");
@@ -316,9 +309,7 @@ fn close_tmux_panes_for_agent_names(agent_names: &[String]) -> Result<usize, Fun
             _ => continue,
         };
         let pane_title = parts.next().unwrap_or_default().trim();
-        if target_titles.contains(pane_title)
-            && run_tmux(&["kill-pane", "-t", pane_id]).is_ok()
-        {
+        if target_titles.contains(pane_title) && run_tmux(&["kill-pane", "-t", pane_id]).is_ok() {
             closed += 1;
         }
     }
@@ -572,18 +563,10 @@ async fn handle_team_list_tasks(session: Arc<Session>) -> Result<ToolOutput, Fun
         .iter()
         .map(|t| {
             let status = match t.status {
-                console_team::TaskStatus::Pending => {
-                    console_tui::TaskDisplayStatus::Pending
-                }
-                console_team::TaskStatus::InProgress => {
-                    console_tui::TaskDisplayStatus::InProgress
-                }
-                console_team::TaskStatus::Completed => {
-                    console_tui::TaskDisplayStatus::Completed
-                }
-                console_team::TaskStatus::Blocked => {
-                    console_tui::TaskDisplayStatus::Blocked
-                }
+                console_team::TaskStatus::Pending => console_tui::TaskDisplayStatus::Pending,
+                console_team::TaskStatus::InProgress => console_tui::TaskDisplayStatus::InProgress,
+                console_team::TaskStatus::Completed => console_tui::TaskDisplayStatus::Completed,
+                console_team::TaskStatus::Blocked => console_tui::TaskDisplayStatus::Blocked,
             };
             console_tui::TaskDisplayItem {
                 title: t.title.clone(),

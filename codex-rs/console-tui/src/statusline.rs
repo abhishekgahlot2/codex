@@ -1,4 +1,5 @@
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 
 /// Data model for the statusline display.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -161,14 +162,12 @@ mod tests {
     fn custom_segments_included() {
         let data = StatuslineData {
             model: Some("GPT-4".into()),
-            custom_segments: vec![
-                StatuslineSegment {
-                    label: "Plugin".into(),
-                    value: "active".into(),
-                    icon: Some("P".into()),
-                    priority: 1, // Should sort between Model(0) and others
-                },
-            ],
+            custom_segments: vec![StatuslineSegment {
+                label: "Plugin".into(),
+                value: "active".into(),
+                icon: Some("P".into()),
+                priority: 1, // Should sort between Model(0) and others
+            }],
             ..Default::default()
         };
         let segments = data.to_segments();

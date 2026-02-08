@@ -7,7 +7,8 @@
 
 use std::collections::BTreeMap;
 
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 
 // ---------------------------------------------------------------------------
 // Minimal mirror of codex-core's JsonSchema / ToolSpec types.
@@ -98,9 +99,7 @@ fn string_param(desc: &str) -> JsonSchema {
 
 fn string_array_param(desc: &str) -> JsonSchema {
     JsonSchema::Array {
-        items: Box::new(JsonSchema::String {
-            description: None,
-        }),
+        items: Box::new(JsonSchema::String { description: None }),
         description: Some(desc.to_string()),
     }
 }
@@ -165,7 +164,9 @@ pub fn create_team_add_agent_tool() -> ToolSpec {
     );
     props.insert(
         "model".to_string(),
-        string_param("Optional model identifier for the agent (e.g. 'claude-sonnet-4-5-20250929')."),
+        string_param(
+            "Optional model identifier for the agent (e.g. 'claude-sonnet-4-5-20250929').",
+        ),
     );
     make_tool(
         "team_add_agent",
@@ -184,7 +185,9 @@ pub fn create_team_add_task_tool() -> ToolSpec {
     );
     props.insert(
         "depends_on".to_string(),
-        string_array_param("Task IDs this task depends on. Task starts Blocked until deps complete."),
+        string_array_param(
+            "Task IDs this task depends on. Task starts Blocked until deps complete.",
+        ),
     );
     make_tool(
         "team_add_task",
@@ -250,10 +253,7 @@ pub fn create_team_send_message_tool() -> ToolSpec {
         "to".to_string(),
         string_param("Agent name or ID to send the message to."),
     );
-    props.insert(
-        "body".to_string(),
-        string_param("Message content."),
-    );
+    props.insert("body".to_string(), string_param("Message content."));
     make_tool(
         "team_send_message",
         "Send a message to another agent on the team.",
@@ -348,9 +348,7 @@ mod tests {
     fn team_create_has_required_team_name() {
         let spec = create_team_create_tool();
         let json = serde_json::to_value(&spec).unwrap();
-        let required = json["parameters"]["required"]
-            .as_array()
-            .unwrap();
+        let required = json["parameters"]["required"].as_array().unwrap();
         assert!(required.iter().any(|v| v == "team_name"));
     }
 
@@ -358,9 +356,7 @@ mod tests {
     fn team_add_task_has_optional_depends_on() {
         let spec = create_team_add_task_tool();
         let json = serde_json::to_value(&spec).unwrap();
-        let required = json["parameters"]["required"]
-            .as_array()
-            .unwrap();
+        let required = json["parameters"]["required"].as_array().unwrap();
         // depends_on is NOT required
         assert!(!required.iter().any(|v| v == "depends_on"));
         // but it IS in properties
@@ -437,8 +433,20 @@ mod tests {
             // Description should start with an action verb or mention "team".
             let first_word = description.split_whitespace().next().unwrap_or("");
             let action_words = [
-                "Create", "Add", "Claim", "Complete", "List", "Send", "Get",
-                "Shut", "Clean", "Remove", "Update", "Assign", "Mark", "Broadcast",
+                "Create",
+                "Add",
+                "Claim",
+                "Complete",
+                "List",
+                "Send",
+                "Get",
+                "Shut",
+                "Clean",
+                "Remove",
+                "Update",
+                "Assign",
+                "Mark",
+                "Broadcast",
             ];
             assert!(
                 action_words
@@ -458,7 +466,12 @@ mod tests {
         let specs = super::all_team_tool_specs();
         let names: Vec<String> = specs
             .iter()
-            .map(|s| serde_json::to_value(s).unwrap()["name"].as_str().unwrap().to_string())
+            .map(|s| {
+                serde_json::to_value(s).unwrap()["name"]
+                    .as_str()
+                    .unwrap()
+                    .to_string()
+            })
             .collect();
 
         // The NL team lifecycle requires these operations:

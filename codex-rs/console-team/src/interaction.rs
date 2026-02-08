@@ -1,4 +1,5 @@
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 
 /// How a teammate agent is hosted and interacted with.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

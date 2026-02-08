@@ -2,10 +2,14 @@
 
 #[cfg(test)]
 mod tests {
-    use crate::density::{density_config, ConversationDensity};
-    use crate::keymap::{default_keymap, KeyAction, KeyCombo};
+    use crate::density::ConversationDensity;
+    use crate::density::density_config;
+    use crate::keymap::KeyAction;
+    use crate::keymap::KeyCombo;
+    use crate::keymap::default_keymap;
     use crate::statusline::StatuslineData;
-    use crate::theme::{default_theme, ThemeToken};
+    use crate::theme::ThemeToken;
+    use crate::theme::default_theme;
 
     // --- Composer UX Checklist ---
 
@@ -15,8 +19,7 @@ mod tests {
         let prompt_color = theme.get(ThemeToken::Prompt);
         // Prompt should be blue (matching the blue chevron from Wave 0 fix)
         assert!(
-            prompt_color.0.contains("58a6ff")
-                || prompt_color.0.to_lowercase().contains("blue"),
+            prompt_color.0.contains("58a6ff") || prompt_color.0.to_lowercase().contains("blue"),
             "prompt color should be blue, got: {}",
             prompt_color.0
         );
@@ -111,7 +114,11 @@ mod tests {
         ];
         for token in &tokens {
             let color = theme.get(*token);
-            assert!(!color.0.is_empty(), "theme token {:?} has empty color", token);
+            assert!(
+                !color.0.is_empty(),
+                "theme token {:?} has empty color",
+                token
+            );
         }
     }
 
@@ -159,10 +166,7 @@ mod tests {
     fn ux_compact_density_minimal_spacing() {
         let config = density_config(ConversationDensity::Compact);
         assert_eq!(config.message_gap, 0, "compact should have no message gap");
-        assert!(
-            !config.show_separators,
-            "compact should hide separators"
-        );
+        assert!(!config.show_separators, "compact should hide separators");
         assert!(
             config.collapse_tool_results,
             "compact should collapse tool results"
@@ -183,7 +187,10 @@ mod tests {
         // Home state should show minimal statusline (no model selected yet)
         let data = StatuslineData::default();
         let segments = data.to_segments();
-        assert!(segments.is_empty(), "home state should have empty statusline");
+        assert!(
+            segments.is_empty(),
+            "home state should have empty statusline"
+        );
     }
 
     #[test]
