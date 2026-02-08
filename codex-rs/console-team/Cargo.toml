@@ -1,0 +1,27 @@
+[package]
+name = "console-team"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+description = "Team orchestration state and types for Console v2 (ConsoleAI team)"
+
+[lib]
+doctest = false
+name = "console_team"
+path = "src/lib.rs"
+
+[lints]
+workspace = true
+
+[dependencies]
+chrono = { workspace = true, features = ["serde"] }
+codex-protocol = { workspace = true }
+rand = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true, features = ["fs", "sync"] }
+
+[dev-dependencies]
+tempfile = { workspace = true }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }

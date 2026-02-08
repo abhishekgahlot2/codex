@@ -6,6 +6,19 @@ use textwrap::Options;
 
 use crate::render::line_utils::push_owned_lines;
 
+/// Compute the byte offset of `sub` within `outer`.
+/// Both must refer to the same underlying allocation (i.e. `sub` is a
+/// slice of `outer`). This is the safe equivalent of `offset_from`.
+fn subslice_offset(outer: &str, sub: &str) -> usize {
+    let outer_start = outer.as_ptr() as usize;
+    let sub_start = sub.as_ptr() as usize;
+    debug_assert!(
+        sub_start >= outer_start && sub_start <= outer_start + outer.len(),
+        "subslice_offset: sub is not within outer"
+    );
+    sub_start - outer_start
+}
+
 pub(crate) fn wrap_ranges<'a, O>(text: &str, width_or_options: O) -> Vec<Range<usize>>
 where
     O: Into<Options<'a>>,
@@ -15,12 +28,29 @@ where
     for line in textwrap::wrap(text, opts).iter() {
         match line {
             std::borrow::Cow::Borrowed(slice) => {
-                let start = unsafe { slice.as_ptr().offset_from(text.as_ptr()) as usize };
+                // --- ConsoleAI team: safe offset via pointer arithmetic ---
+                let start = subslice_offset(text, slice);
                 let end = start + slice.len();
                 let trailing_spaces = text[end..].chars().take_while(|c| *c == ' ').count();
                 lines.push(start..end + trailing_spaces + 1);
             }
-            std::borrow::Cow::Owned(_) => panic!("wrap_ranges: unexpected owned string"),
+            std::borrow::Cow::Owned(s) => {
+                // textwrap may return owned strings after hyphenation or other
+                // transformations. Find the matching region in the source text.
+                let search_start = lines.last().map_or(0, |r| r.end.saturating_sub(1));
+                // Strip trailing hyphen that textwrap may have added
+                let needle = s.trim_end_matches('-');
+                let start = if needle.is_empty() {
+                    search_start
+                } else {
+                    text[search_start..]
+                        .find(needle)
+                        .map_or(search_start, |i| search_start + i)
+                };
+                let end = (start + needle.len()).min(text.len());
+                let trailing_spaces = text[end..].chars().take_while(|c| *c == ' ').count();
+                lines.push(start..end + trailing_spaces + 1);
+            }
         }
     }
     lines
@@ -38,11 +68,27 @@ where
     for line in textwrap::wrap(text, opts).iter() {
         match line {
             std::borrow::Cow::Borrowed(slice) => {
-                let start = unsafe { slice.as_ptr().offset_from(text.as_ptr()) as usize };
+                // --- ConsoleAI team: safe offset via pointer arithmetic ---
+                let start = subslice_offset(text, slice);
                 let end = start + slice.len();
                 lines.push(start..end);
             }
-            std::borrow::Cow::Owned(_) => panic!("wrap_ranges_trim: unexpected owned string"),
+            std::borrow::Cow::Owned(s) => {
+                // textwrap may return owned strings after hyphenation or other
+                // transformations. Find the matching region in the source text.
+                let search_start = lines.last().map_or(0, |r| r.end);
+                // Strip trailing hyphen that textwrap may have added
+                let needle = s.trim_end_matches('-');
+                let start = if needle.is_empty() {
+                    search_start
+                } else {
+                    text[search_start..]
+                        .find(needle)
+                        .map_or(search_start, |i| search_start + i)
+                };
+                let end = (start + needle.len()).min(text.len());
+                lines.push(start..end);
+            }
         }
     }
     lines

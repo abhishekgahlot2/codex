@@ -1,0 +1,20 @@
+[package]
+name = "console-persist"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+description = "Session durability, checkpoints, context compaction, and import/export for Console v2"
+
+[lib]
+doctest = false
+name = "console_persist"
+path = "src/lib.rs"
+
+[lints]
+workspace = true
+
+[dependencies]
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+chrono = { workspace = true }
+thiserror = { workspace = true }

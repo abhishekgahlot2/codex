@@ -91,6 +91,7 @@ mod spawn {
 
     use crate::agent::exceeds_thread_spawn_depth_limit;
     use crate::agent::next_thread_spawn_depth;
+    use std::process::Command;
     use std::sync::Arc;
 
     #[derive(Debug, Deserialize)]
@@ -104,6 +105,68 @@ mod spawn {
         agent_id: String,
     }
 
+    fn collab_tmux_mode_enabled() -> bool {
+        let env_mode = std::env::var("CONSOLE_TEAMMATE_MODE")
+            .ok()
+            .map(|v| v.trim().to_ascii_lowercase().replace('_', "-"))
+            .unwrap_or_else(|| "auto".to_string());
+        match env_mode.as_str() {
+            "tmux" => true,
+            "in-process" => false,
+            "auto" => std::env::var("TMUX").is_ok(),
+            _ => std::env::var("TMUX").is_ok(),
+        }
+    }
+
+    fn run_tmux(args: &[&str]) -> Result<String, String> {
+        let output = Command::new("tmux")
+            .args(args)
+            .output()
+            .map_err(|e| format!("tmux command failed: {e}"))?;
+
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+            return Err(format!(
+                "tmux command '{}' failed: {}",
+                args.join(" "),
+                if stderr.is_empty() {
+                    "unknown error".to_string()
+                } else {
+                    stderr
+                }
+            ));
+        }
+        Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+    }
+
+    fn shell_quote_double(input: &str) -> String {
+        format!("\"{}\"", input.replace('\\', "\\\\").replace('"', "\\\""))
+    }
+
+    fn maybe_spawn_tmux_pane_for_collab_agent(thread_id: ThreadId) -> Result<(), String> {
+        if !collab_tmux_mode_enabled() || std::env::var("TMUX").is_err() {
+            return Ok(());
+        }
+        let pane_id = run_tmux(&["split-window", "-h", "-P", "-F", "#{pane_id}"])?;
+
+        let pane_title = format!("@agent-{}", thread_id);
+        let _ = run_tmux(&["select-pane", "-t", &pane_id, "-T", &pane_title]);
+
+        let codex_bin = std::env::var("CONSOLE_CODEX_BIN").unwrap_or_else(|_| {
+            std::env::current_exe()
+                .ok()
+                .map(|p| p.to_string_lossy().to_string())
+                .unwrap_or_else(|| "codex".to_string())
+        });
+        let codex_bin_quoted = shell_quote_double(&codex_bin);
+        let shell_cmd = format!(
+            "clear; echo \"teammate\"; echo \"thread: {}\"; {} resume {}",
+            thread_id, codex_bin_quoted, thread_id
+        );
+        let _ = run_tmux(&["send-keys", "-t", &pane_id, &shell_cmd, "C-m"])?;
+        Ok(())
+    }
+
     pub async fn handle(
         session: Arc<Session>,
         turn: Arc<TurnContext>,
@@ -111,6 +174,20 @@ mod spawn {
         arguments: String,
     ) -> Result<ToolOutput, FunctionCallError> {
         let args: SpawnAgentArgs = parse_arguments(&arguments)?;
+        if session.features().enabled(Feature::TeamOrchestration) {
+            if let Ok(team) = session.services.team_state.get_team().await {
+                let lead = team.agents.iter().find(|a| a.id == team.lead_id);
+                let is_lead_session = lead
+                    .and_then(|a| a.thread_id)
+                    .is_some_and(|tid| tid == session.conversation_id);
+                if is_lead_session {
+                    return Err(FunctionCallError::RespondToModel(
+                        "Team lead cannot use spawn_agent while a team is active. Use team_create/team_status/team_add_task/team_claim_task/team_message/team_shutdown_agent/team_cleanup."
+                            .to_string(),
+                    ));
+                }
+            }
+        }
         let agent_role = args.agent_type.unwrap_or(AgentRole::Default);
         let prompt = args.message;
         if prompt.trim().is_empty() {
@@ -176,6 +253,9 @@ mod spawn {
             )
             .await;
         let new_thread_id = result?;
+        if let Err(err) = maybe_spawn_tmux_pane_for_collab_agent(new_thread_id) {
+            tracing::warn!("spawn_agent tmux pane fallback failed: {err}");
+        }
 
         let content = serde_json::to_string(&SpawnAgentResult {
             agent_id: new_thread_id.to_string(),

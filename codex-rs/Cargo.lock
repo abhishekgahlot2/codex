@@ -1576,6 +1576,13 @@ dependencies = [
  "codex-utils-readiness",
  "codex-utils-string",
  "codex-windows-sandbox",
+ "console-persist",
+ "console-plugin",
+ "console-provider",
+ "console-runtime",
+ "console-security",
+ "console-team",
+ "console-tui",
  "core-foundation 0.9.4",
  "core_test_support",
  "ctor 0.6.3",
@@ -2379,6 +2386,78 @@ dependencies = [
  "libc",
  "once_cell",
  "windows-sys 0.59.0",
+]
+
+[[package]]
+name = "console-cli"
+version = "0.1.0"
+dependencies = [
+ "serde",
+]
+
+[[package]]
+name = "console-persist"
+version = "0.0.0"
+dependencies = [
+ "chrono",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+]
+
+[[package]]
+name = "console-plugin"
+version = "0.0.0"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "console-provider"
+version = "0.0.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+]
+
+[[package]]
+name = "console-runtime"
+version = "0.0.0"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "console-security"
+version = "0.0.0"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "console-team"
+version = "0.0.0"
+dependencies = [
+ "chrono",
+ "codex-protocol",
+ "rand 0.9.2",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tokio",
+]
+
+[[package]]
+name = "console-tui"
+version = "0.0.0"
+dependencies = [
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

@@ -102,6 +102,11 @@ pub struct Cli {
     #[arg(long = "add-dir", value_name = "DIR", value_hint = ValueHint::DirPath)]
     pub add_dir: Vec<PathBuf>,
 
+    /// How teammate agents are displayed: 'auto' (default: tmux panes if inside
+    /// tmux, in-process otherwise), 'tmux' (split panes), or 'in-process'.
+    #[arg(long = "teammate-mode", value_name = "MODE")]
+    pub teammate_mode: Option<String>,
+
     /// Disable alternate screen mode
     ///
     /// Runs the TUI in inline mode, preserving terminal scrollback history. This is useful

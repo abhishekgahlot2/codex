@@ -1,0 +1,20 @@
+[package]
+name = "console-runtime"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+description = "Execution guardrails, mode policies, and tool loop state for Console v2"
+
+[lib]
+doctest = false
+name = "console_runtime"
+path = "src/lib.rs"
+
+[lints]
+workspace = true
+
+[dependencies]
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+
+[dev-dependencies]

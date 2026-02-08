@@ -1,0 +1,18 @@
+[package]
+name = "console-tui"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+description = "Theme tokens, statusline bridge, keymap definitions, and density config for Console v2 TUI"
+
+[lib]
+doctest = false
+name = "console_tui"
+path = "src/lib.rs"
+
+[lints]
+workspace = true
+
+[dependencies]
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
