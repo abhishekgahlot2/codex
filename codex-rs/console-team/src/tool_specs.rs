@@ -1,4 +1,4 @@
-//! Tool specification builders for the 9 team orchestration tools.
+//! Tool specification builders for the 10 team orchestration tools.
 //!
 //! Each function returns a `ToolSpec` (tagged as `"function"`) that serializes
 //! to the same JSON shape as `codex-core`'s `ToolSpec::Function`. This lets
@@ -220,9 +220,13 @@ pub fn create_team_complete_task_tool() -> ToolSpec {
         "task_id".to_string(),
         string_param("ID of the task to mark Completed."),
     );
+    props.insert(
+        "result".to_string(),
+        string_param("Output or result text to attach to the completed task. The lead reads this from the task board."),
+    );
     make_tool(
         "team_complete_task",
-        "Mark a task as Completed. Any Blocked tasks whose dependencies are now all complete are auto-promoted to Pending.",
+        "Mark a task as Completed and attach an optional result. The lead reads results from the task board via team_list_tasks. Any Blocked tasks whose dependencies are now all complete are auto-promoted to Pending.",
         props,
         vec!["task_id"],
     )
@@ -273,6 +277,25 @@ pub fn create_team_list_messages_tool() -> ToolSpec {
     )
 }
 
+/// `team_broadcast` – broadcast a message to all active teammates.
+pub fn create_team_broadcast_tool() -> ToolSpec {
+    let mut props = BTreeMap::new();
+    props.insert(
+        "from".to_string(),
+        string_param("Sender agent name or id (optional, defaults to lead)."),
+    );
+    props.insert(
+        "body".to_string(),
+        string_param("Message body to send to all teammates."),
+    );
+    make_tool(
+        "team_broadcast",
+        "Broadcast a message to all active teammates. Use for announcements that every teammate needs to see.",
+        props,
+        vec!["body"],
+    )
+}
+
 /// `team_cleanup` – tear down the team, removing persisted state.
 pub fn create_team_cleanup_tool() -> ToolSpec {
     let props = BTreeMap::new();
@@ -284,7 +307,7 @@ pub fn create_team_cleanup_tool() -> ToolSpec {
     )
 }
 
-/// Return all 9 team tool specs.
+/// Return all 10 team tool specs.
 pub fn all_team_tool_specs() -> Vec<ToolSpec> {
     vec![
         create_team_create_tool(),
@@ -294,6 +317,7 @@ pub fn all_team_tool_specs() -> Vec<ToolSpec> {
         create_team_complete_task_tool(),
         create_team_list_tasks_tool(),
         create_team_send_message_tool(),
+        create_team_broadcast_tool(),
         create_team_list_messages_tool(),
         create_team_cleanup_tool(),
     ]
@@ -316,8 +340,8 @@ mod tests {
     }
 
     #[test]
-    fn spec_count_is_nine() {
-        assert_eq!(all_team_tool_specs().len(), 9);
+    fn spec_count_is_ten() {
+        assert_eq!(all_team_tool_specs().len(), 10);
     }
 
     #[test]
@@ -414,7 +438,7 @@ mod tests {
             let first_word = description.split_whitespace().next().unwrap_or("");
             let action_words = [
                 "Create", "Add", "Claim", "Complete", "List", "Send", "Get",
-                "Shut", "Clean", "Remove", "Update", "Assign", "Mark",
+                "Shut", "Clean", "Remove", "Update", "Assign", "Mark", "Broadcast",
             ];
             assert!(
                 action_words
@@ -446,6 +470,7 @@ mod tests {
             "team_complete_task", // "mark task as done"
             "team_list_tasks",    // "show me the task board"
             "team_send_message",  // "tell agent X to start working"
+            "team_broadcast",     // "announce to all teammates"
             "team_list_messages", // "show recent messages"
             "team_cleanup",       // "clean up the team"
         ];

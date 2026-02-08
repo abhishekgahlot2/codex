@@ -64,19 +64,12 @@ impl TeamState {
         }
     }
 
-    /// If the in-memory state is `None`, scan `persist_dir` for a `.json` file,
-    /// deserialize the first one found, and load it into memory.  This allows a
-    /// second `TeamState` instance (e.g. a teammate process) to pick up state
-    /// that was persisted by a different process.
+    /// Reload team state from the persisted `.json` file on disk.
+    ///
+    /// In tmux mode each teammate runs as a separate codex process with its own
+    /// `TeamState` instance.  We must re-read from disk on every access so that
+    /// changes made by other processes (e.g. the lead adding tasks) are visible.
     async fn try_load_from_disk(&self) {
-        // Fast-path: already loaded.
-        {
-            let guard = self.data.read().await;
-            if guard.is_some() {
-                return;
-            }
-        }
-
         // Scan persist_dir for *.json files.
         let mut read_dir = match tokio::fs::read_dir(&self.persist_dir).await {
             Ok(rd) => rd,
@@ -89,10 +82,7 @@ impl TeamState {
                 if let Ok(bytes) = tokio::fs::read(&path).await {
                     if let Ok(state) = serde_json::from_slice::<TeamStateData>(&bytes) {
                         let mut guard = self.data.write().await;
-                        // Double-check: another task may have loaded while we were reading.
-                        if guard.is_none() {
-                            *guard = Some(state);
-                        }
+                        *guard = Some(state);
                         return;
                     }
                 }
@@ -239,6 +229,7 @@ impl TeamState {
             title: title.to_string(),
             status,
             assignee_id: None,
+            result: None,
             depends_on,
             created_at: now,
             updated_at: now,
@@ -298,7 +289,9 @@ impl TeamState {
     }
 
     /// Mark a task as completed and auto-unblock dependents whose deps are all done.
-    pub async fn complete_task(&self, task_id: &str) -> Result<TeamTask> {
+    /// An optional `result` string is stored on the task so the lead can read
+    /// outputs directly from the task board without needing a separate message.
+    pub async fn complete_task(&self, task_id: &str, result: Option<String>) -> Result<TeamTask> {
         self.try_load_from_disk().await;
         let mut guard = self.data.write().await;
         let state = guard.as_mut().ok_or_else(|| {
@@ -312,6 +305,7 @@ impl TeamState {
             .ok_or_else(|| TeamError::InvalidOperation(format!("Task not found: {task_id}")))?;
 
         task.status = TaskStatus::Completed;
+        task.result = result;
         task.updated_at = Utc::now();
         let result = task.clone();
 
@@ -370,6 +364,41 @@ impl TeamState {
         state.updated_at = Utc::now();
         Self::persist_inner(&self.persist_dir, state).await?;
         Ok(msg)
+    }
+
+    /// Broadcast a message from one agent to ALL other agents.
+    /// Returns a Vec of the created messages (one per recipient).
+    pub async fn broadcast_message(&self, from: &str, body: &str) -> Result<Vec<TeamMessage>> {
+        self.try_load_from_disk().await;
+        let mut guard = self.data.write().await;
+        let state = guard.as_mut().ok_or_else(|| {
+            TeamError::InvalidOperation("No team has been created yet".to_string())
+        })?;
+
+        // Collect all agent IDs that are NOT the sender.
+        let recipients: Vec<String> = state
+            .agents
+            .iter()
+            .filter(|a| a.id != from && a.name != from && a.status != TeamAgentStatus::Shutdown)
+            .map(|a| a.id.clone())
+            .collect();
+
+        let mut messages = Vec::new();
+        for to_id in recipients {
+            let msg = TeamMessage {
+                id: generate_id("msg"),
+                from: from.to_string(),
+                to: to_id,
+                body: body.to_string(),
+                created_at: Utc::now(),
+            };
+            state.messages.push(msg.clone());
+            messages.push(msg);
+        }
+
+        state.updated_at = Utc::now();
+        Self::persist_inner(&self.persist_dir, state).await?;
+        Ok(messages)
     }
 
     /// Return messages, optionally limited to the most recent N.
@@ -655,7 +684,7 @@ mod tests {
         let t2 = ts.add_task("second", vec![t1.id.clone()]).await.unwrap();
         assert_eq!(t2.status, TaskStatus::Blocked);
 
-        ts.complete_task(&t1.id).await.unwrap();
+        ts.complete_task(&t1.id, None).await.unwrap();
         let tasks = ts.list_tasks().await.unwrap();
         let updated_t2 = tasks.iter().find(|t| t.id == t2.id).unwrap();
         assert_eq!(updated_t2.status, TaskStatus::Pending);
@@ -887,7 +916,7 @@ mod tests {
         assert_eq!(claimed_b.status, TaskStatus::InProgress);
 
         // 9. complete_task A -> C still Blocked (B not done)
-        ts.complete_task(&task_a.id).await.unwrap();
+        ts.complete_task(&task_a.id, None).await.unwrap();
         let tasks = ts.list_tasks().await.unwrap();
         let c_after_a = tasks.iter().find(|t| t.id == task_c.id).unwrap();
         assert_eq!(c_after_a.status, TaskStatus::Blocked);
@@ -903,7 +932,7 @@ mod tests {
         assert_eq!(ts.list_messages(None).await.unwrap().len(), 1);
 
         // 11. complete_task B -> C auto-unblocks to Pending
-        ts.complete_task(&task_b.id).await.unwrap();
+        ts.complete_task(&task_b.id, None).await.unwrap();
         let tasks = ts.list_tasks().await.unwrap();
         let c_after_b = tasks.iter().find(|t| t.id == task_c.id).unwrap();
         assert_eq!(c_after_b.status, TaskStatus::Pending);
@@ -913,7 +942,7 @@ mod tests {
         assert_eq!(claimed_c.status, TaskStatus::InProgress);
 
         // 13. complete_task C -> all done
-        ts.complete_task(&task_c.id).await.unwrap();
+        ts.complete_task(&task_c.id, None).await.unwrap();
         for t in ts.list_tasks().await.unwrap() {
             assert_eq!(t.status, TaskStatus::Completed);
         }
@@ -971,7 +1000,7 @@ mod tests {
 
         // Complete X and Y to unblock Z
         ts.claim_task(&tx.id, &alpha.id).await.unwrap();
-        ts.complete_task(&tx.id).await.unwrap();
+        ts.complete_task(&tx.id, None).await.unwrap();
 
         // Cannot claim completed task
         let err = ts.claim_task(&tx.id, &alpha.id).await.unwrap_err();
@@ -985,7 +1014,7 @@ mod tests {
 
         // Complete Y -> Z unblocks
         ts.claim_task(&ty.id, &alpha.id).await.unwrap();
-        ts.complete_task(&ty.id).await.unwrap();
+        ts.complete_task(&ty.id, None).await.unwrap();
         let tasks = ts.list_tasks().await.unwrap();
         assert_eq!(
             tasks.iter().find(|t| t.id == tz.id).unwrap().status,
@@ -1110,5 +1139,34 @@ mod tests {
 
         let err = ts.validate_invariants().await.unwrap_err();
         assert!(err.to_string().contains("expected 1 lead, found 2"));
+    }
+
+    #[tokio::test]
+    async fn broadcast_message_sends_to_all() {
+        let tmp = tempfile::tempdir().unwrap();
+        let ts = make_state(tmp.path());
+        ts.create_team("bc-team", "lead").await.unwrap();
+        let lead_id = ts.get_team().await.unwrap().lead_id;
+        ts.add_agent("w1", TeamAgentRole::Teammate, None, None).await.unwrap();
+        ts.add_agent("w2", TeamAgentRole::Teammate, None, None).await.unwrap();
+
+        let msgs = ts.broadcast_message(&lead_id, "hello all").await.unwrap();
+        assert_eq!(msgs.len(), 2); // w1 and w2
+        assert!(msgs.iter().all(|m| m.body == "hello all"));
+        assert!(msgs.iter().all(|m| m.from == lead_id));
+    }
+
+    #[tokio::test]
+    async fn broadcast_skips_shutdown_agents() {
+        let tmp = tempfile::tempdir().unwrap();
+        let ts = make_state(tmp.path());
+        ts.create_team("bc2", "lead").await.unwrap();
+        let lead_id = ts.get_team().await.unwrap().lead_id;
+        let w1 = ts.add_agent("w1", TeamAgentRole::Teammate, None, None).await.unwrap();
+        ts.add_agent("w2", TeamAgentRole::Teammate, None, None).await.unwrap();
+        ts.update_agent_status(&w1.id, TeamAgentStatus::Shutdown).await.unwrap();
+
+        let msgs = ts.broadcast_message(&lead_id, "active only").await.unwrap();
+        assert_eq!(msgs.len(), 1); // only w2
     }
 }

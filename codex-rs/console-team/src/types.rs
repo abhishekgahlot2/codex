@@ -56,6 +56,9 @@ pub struct TeamTask {
     pub status: TaskStatus,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub assignee_id: Option<String>,
+    /// Output / result text attached when the task is completed.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub result: Option<String>,
     #[serde(default)]
     pub depends_on: Vec<String>,
     pub created_at: DateTime<Utc>,
