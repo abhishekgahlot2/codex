@@ -1582,6 +1582,7 @@ dependencies = [
  "console-runtime",
  "console-security",
  "console-team",
+ "console-tui",
  "core-foundation 0.9.4",
  "core_test_support",
  "ctor 0.6.3",

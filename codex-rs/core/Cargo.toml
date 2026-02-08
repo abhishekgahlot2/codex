@@ -28,6 +28,7 @@ chrono = { workspace = true, features = ["serde"] }
 clap = { workspace = true, features = ["derive"] }
 # --- ConsoleAI team: team orchestration (see CODEX_FORK_PATCH_POLICY) ---
 console-team = { workspace = true }
+console-tui = { workspace = true }
 console-provider = { workspace = true }
 console-runtime = { workspace = true }
 console-persist = { workspace = true }
